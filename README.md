@@ -4,7 +4,9 @@ Code repository for Chen, Harris, and Lacoste (2024): heterogeneity of charter s
 There are currently two main folders in this repo which house code and data: \build and \analysis.
 
 The \build folder contains all data and code necessary to clean and pre-process the data for analysis. It contains several sub-directories:
-1. \input which houses the raw data on (XYZ audit data).
+1. \input which houses the raw data on charter schools. 
+    Note: the raw data files are too large to store on Github. They are stored locally on my machine and the code points to them, but they are not tracked by Github because I included them in the .gitignore file. I also include the \output file in .gitignore so that it will also not be tracked by Github as the output files will be too large as well. The scripts which clean the data will be tracked on Github.
+
 2. \code which houses the cleaning and pre-processing script(s).
 3. \output will contain the cleaned dataset(s) which are imported directly from the scripts in the \analysis folder.
 4. \temp contains any log files or temporary outputs which we may want to save.
