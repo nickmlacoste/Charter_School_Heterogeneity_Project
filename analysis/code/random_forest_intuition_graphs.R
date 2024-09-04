@@ -9,7 +9,7 @@ This script makes some intuition tables for the CF section of the paper
 library(randomForest)
 library(tidyverse)
 
-output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output"
+output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures"
 
 
 # Example of Random Forest smoothing ----------------------
