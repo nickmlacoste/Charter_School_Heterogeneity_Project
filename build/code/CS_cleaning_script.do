@@ -174,6 +174,25 @@ tab cred_state
 keep state cred_state
 save credible_afgr2, replace
 
+use charter_afgr2, clear
+gen treated=maxshare2>0
+duplicates drop district, force
+bysort state: egen obsn=sum(treated)
+keep if obsn==0 | obsn>=5
+keep district
+
+merge 1:m district using charter_afgr2, keep(3) nogen
+
+
+
+merge m:1 district using credible_afgr, nogen
+gen sample2=cred_dist==1 | maxshare2==0
+gen sample3=pyear>1995    // drop always treated
+
+
+gen inter=lag_share
+save charter_afgr2_c, replace
+
 
 // 1366
 ** SEDA
@@ -248,6 +267,24 @@ duplicates drop state, force
 tab cred_state
 keep state cred_state
 save credible_seda2, replace
+
+use charter_seda, clear
+gen treated=maxshare2>0
+duplicates drop district, force
+bysort state: egen obsn=sum(treated)
+keep if obsn==0 | obsn>=5
+keep district
+
+merge 1:m district using charter_seda, keep(3) nogen
+
+merge m:1 district using credible_seda, nogen
+gen sample2=cred_dist==1 | maxshare2==0
+gen sample3=pyear>2008    // drop always treated
+
+
+
+gen inter=lag_grade
+save charter_seda_c, replace
 
 
 

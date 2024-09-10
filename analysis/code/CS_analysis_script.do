@@ -105,6 +105,7 @@ gen sample3=pyear>1995    // drop always treated
 
 
 gen inter=lag_share
+*save charter_afgr2_c, replace
 eststo clear 
 gen outcome=afgr
 eststo: quietly reghdfe outcome inter  [pw=eweight] , absorb(stateyear district##c.year) vce(cluster district)
@@ -147,6 +148,7 @@ gen sample3=pyear>2008    // drop always treated
 
 
 gen inter=lag_grade
+*save charter_seda_c, replace
 eststo clear 
 gen outcome=st_math
 eststo: quietly reghdfe outcome inter  [pw=eweight] , absorb(sgyear district##c.year) vce(cluster district)
