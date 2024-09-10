@@ -149,7 +149,7 @@ afgr_blp <- best_linear_projection(cf_model, X_matrix[,afgr_ranked_vars[1:5]])
 
 
 
-# Distribution of treatment effects plot
+# Distribution of treatment effects plot -------------------
 
 plot <- ggplot(afgr_cates, aes(x = predictions, fill = as.factor(significant))) +
   geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
@@ -212,11 +212,60 @@ print(summary_table,
 
 # Group Average Treatment Effect Table --------------------
 
-average_treatment_effect(cf_model, 
-                         target.sample = "all",
-                         method = "AIPW",
-                         subset = X_matrix[,"urban"] == 1)
+# enter subgroups of interest in this list
+subgroup_conditions <- list(
+  "Urban" = X_matrix[,"urban"] == 1,
+  "Suburban" = X_matrix[,"suburb"] == 1,
+  "Rural" = X_matrix[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+)
 
+# initializes the table to store results
+gate_results_table <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `% N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# calculate GATES
+for (group_name in names(subgroup_conditions)) {
+  
+  condition <- subgroup_conditions[[group_name]]
+  
+  gate_result <- average_treatment_effect(cf_model, 
+                                          target.sample = "all",
+                                          method = "AIPW",
+                                          subset = condition)
+  
+  gate_estimate <- gate_result[[1]]
+  gate_se <- gate_result[[2]]
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  gate_results_table <- rbind(
+    gate_results_table,
+    data.frame(
+      Group = group_name,
+      GATE = gate_estimate,
+      SE = gate_se,
+      `p-value` = p_value,
+      `Share of N` = proportion_N,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+gate_results_table <- xtable(gate_results_table)
+print(gate_results_table,
+      file = file.path(output_path, "/tables/gates_table.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
 
 
 
