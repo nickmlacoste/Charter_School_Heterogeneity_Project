@@ -12,9 +12,11 @@ library(tidyverse)
 library(haven)
 library(grf)
 library(xtable)
+library(plm)
 
 data_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/data"
 output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output"
+cf_output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/large_output"
 
 # Import graduation rate data
 #charter_afgr2 <- read_dta(file.path(data_path, "charter_afgr2.dta"))
@@ -22,28 +24,43 @@ charter_afgr2 <- read_dta(file.path(data_path, "charter_afgr2_c.dta")) #this one
 
 # Import test score data
 #charter_seda <- read_dta(file.path(data_path, "charter_seda.dta"))
-charter_seda <- read_dta(file.path(data_path, "charter_seda_c.dta"))
+charter_seda <- read_dta(file.path(data_path, "charter_seda_c.dta")) #this one is fully cleaned
 # NOTE: MAY WANT TO DO THESE ONE-AT-A-TIME TO SAVE RAM
 
 
-
+###########                        ################
+###########Graduation Rate results ################
+###########                       #################
 # Estimate Causal Forest on graduation rate data -------------------------
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
                   "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff")
 
-outcomes <- c("afgr", "st_math", "st_math")
-
 # remove rows with missing data for Y or W
 charter_afgr2_clean <- charter_afgr2 %>%
   filter(!is.na(afgr) & !is.na(inter))
 
-# estimate the model
-X_matrix <- as.matrix(charter_afgr2_clean[, X_covariates])
-Y_vector <- as.vector(charter_afgr2_clean$afgr)
-W_vector <- as.vector(charter_afgr2_clean$lag_share)
-weight_vector <- as.vector(charter_afgr2_clean$eweight)
+# global within transformation
+charter_afgr2_panel <- pdata.frame(charter_afgr2_clean,
+                                   index = c("district","stateyear"))
+
+X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+  Within(charter_afgr2_panel[[var]], effect = "twoway")
+}))
+colnames(X_matrix) <- X_covariates
+X_matrix <- as.matrix(X_matrix)
+Y_vector <- as.vector(Within(charter_afgr2_panel$afgr, effect = "twoway"))
+W_vector <- as.vector(Within(charter_afgr2_panel$lag_share, "twoway"))
+weight_vector <- as.vector(charter_afgr2_panel$eweight)
+
+
+
+# # estimate the model (without within-transform)
+# X_matrix <- as.matrix(charter_afgr2_clean[, X_covariates])
+# Y_vector <- as.vector(charter_afgr2_clean$afgr)
+# W_vector <- as.vector(charter_afgr2_clean$lag_share)
+# weight_vector <- as.vector(charter_afgr2_clean$eweight)
 
 cf_model <- causal_forest(X = X_matrix,
                           Y = Y_vector,
@@ -52,7 +69,7 @@ cf_model <- causal_forest(X = X_matrix,
                           W.hat = NULL,
                           num.trees = 100,
                           sample.weights = weight_vector,
-                          clusters = as.factor(charter_afgr2_clean$district),
+                          clusters = as.factor(charter_afgr2_panel$district),
                           equalize.cluster.weights = FALSE,
                           sample.fraction = 0.5,
                           mtry = min(ceiling(sqrt(ncol(X_matrix)) + 20), ncol(X_matrix)),
@@ -71,16 +88,13 @@ cf_model <- causal_forest(X = X_matrix,
                           compute.oob.predictions = TRUE,
                           num.threads = NULL,
                           seed = runif(1, 0, .Machine$integer.max)
-                          )
+)
 
 # Save (pickle) the causal forest model so we can import it in external files
-saveRDS(cf_model, file = paste0(output_path, "/cf_model_afgr.rda"))
+saveRDS(cf_model, file = paste0(cf_output_path, "/cf_model_afgr.rda"))
 # this reads in the saved model
-cf_model <- readRDS(file.path(output_path, "cf_model_afgr.rda"))
+cf_model <- readRDS(file.path(cf_output_path, "cf_model_afgr.rda"))
 
-###########                        ################
-###########Graduation Rate results ################
-###########                       #################
 
 # generate CATE estimates on training data (i.e. the full sample) using leave-one-out estimates ---------
 afgr_cates <- predict(cf_model,
@@ -129,12 +143,12 @@ vif_df$Variable <- covariate_names[vif_df$Variable]
 plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
   geom_bar(stat = "identity", fill = "steelblue") +    
   coord_flip() +                                       
-  labs(title = "Variable Importance (VIF Scores)", 
+  labs(title = "Variable Importance (VIF Scores) - Graduation Rates", 
        x = "Variable", 
        y = "Variable Importance Score") +
   theme_minimal() 
 
-ggsave(filename = file.path(output_path, "vif_scores.png"), plot = plot, 
+ggsave(filename = file.path(output_path, "/figures/vif_scores_afgr.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
 
@@ -147,14 +161,31 @@ ggsave(filename = file.path(output_path, "vif_scores.png"), plot = plot,
 # effect to see which ones are associated with higher/lower treatment effects
 afgr_blp <- best_linear_projection(cf_model, X_matrix[,afgr_ranked_vars[1:5]])
 
+blp_results <- data.frame(
+  Variable = c("(Intercept)", "logenroll", "perhsp", "perfrl", "perwht", "str"),
+  Estimate = afgr_blp[, 1],  
+  `Std. Error` = afgr_blp[, 2],  
+  `t value` = afgr_blp[, 3],  
+  `Pr(>|t|)` = afgr_blp[, 4]  
+)
 
+blp_results <- xtable(blp_results, 
+                    caption = "Best Linear Projection of the Conditional Average Treatment Effect",
+                    align = c("l", "l", "r", "r", "r", "r"))
+
+print(blp_results,
+      file = file.path(output_path, "/tables/blp_table_afgr.tex"),
+      include.rownames = FALSE,
+      floating = FALSE,
+      hline.after = c(-1, 0, nrow(blp_results))
+      )
 
 # Distribution of treatment effects plot -------------------
 
 plot <- ggplot(afgr_cates, aes(x = predictions, fill = as.factor(significant))) +
   geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
   scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
-                    name = "P-Value <= 0.1") +  # Custom colors for 0 and 1
+                    name = "P-Value <= 0.1") +  
   labs(title = "Distribution of Estimated Treatment Effects", 
        x = "Treatment Effect", 
        y = "Frequency") +
@@ -164,7 +195,7 @@ plot <- ggplot(afgr_cates, aes(x = predictions, fill = as.factor(significant))) 
             vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
   theme_minimal()
 
-ggsave(filename = file.path(output_path, "afgr_cate_dist.png"), plot = plot, 
+ggsave(filename = file.path(output_path, "/figures/cate_dist_afgr.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
 
@@ -205,7 +236,7 @@ summary_table <- bind_cols(
 
 summary_table <- xtable(summary_table)
 print(summary_table,
-      file = file.path(output_path, "/tables/cov_means_table.tex"),
+      file = file.path(output_path, "/tables/cov_means_table_afgr.tex"),
       include.rownames = TRUE,
       floating = FALSE)
 
@@ -215,9 +246,9 @@ print(summary_table,
 # enter subgroups of interest in this list
 subgroup_conditions <- list(
   "Urban" = X_matrix[,"urban"] == 1,
-  "Suburban" = X_matrix[,"suburb"] == 1,
-  "Rural" = X_matrix[,"rural"] == 1,
-  "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+  "Suburban" = X_matrix[,"suburb"] == 1
+  # "Rural" = X_matrix[,"rural"] == 1,
+  # "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
 )
 
 # initializes the table to store results
@@ -263,9 +294,570 @@ for (group_name in names(subgroup_conditions)) {
 
 gate_results_table <- xtable(gate_results_table)
 print(gate_results_table,
-      file = file.path(output_path, "/tables/gates_table.tex"),
+      file = file.path(output_path, "/tables/gates_table_afgr.tex"),
       include.rownames = TRUE,
       floating = FALSE)
+
+
+###########                        ################
+###########  Test Score results    ################
+###########                        ################
+
+# Estimate Causal Forest on test score data (MATH) -------------------------
+
+X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
+                  "perspeced", "urban", "suburb", "town", "rural", 
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff")
+
+# remove rows with missing data for Y or W
+charter_seda_math <- charter_seda %>%
+  filter(!is.na(st_math) & !is.na(inter))
+
+# global within transformation
+charter_seda_math_panel <- pdata.frame(charter_seda_math,
+                                   index = c("district","sgyear"))
+
+X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+  Within(charter_seda_math_panel[[var]], effect = "twoway")
+}))
+colnames(X_matrix) <- X_covariates
+X_matrix <- as.matrix(X_matrix)
+Y_vector <- as.vector(Within(charter_seda_math_panel$st_math, effect = "twoway"))
+W_vector <- as.vector(Within(charter_seda_math_panel$lag_grade, "twoway"))
+weight_vector <- as.vector(charter_seda_math_panel$eweight)
+
+# # estimate the model - without within-transform
+# X_matrix <- as.matrix(charter_seda_math[, X_covariates])
+# Y_vector <- as.vector(charter_seda_math$st_math)
+# W_vector <- as.vector(charter_seda_math$lag_grade)
+# weight_vector <- as.vector(charter_seda_math$eweight)
+
+cf_model <- causal_forest(X = X_matrix,
+                          Y = Y_vector,
+                          W = W_vector,
+                          Y.hat = NULL,
+                          W.hat = NULL,
+                          num.trees = 100,
+                          sample.weights = weight_vector,
+                          clusters = as.factor(charter_seda_math_panel$district),
+                          equalize.cluster.weights = FALSE,
+                          sample.fraction = 0.5,
+                          mtry = min(ceiling(sqrt(ncol(X_matrix)) + 20), ncol(X_matrix)),
+                          min.node.size = 5,
+                          honesty = TRUE,
+                          honesty.fraction = 0.5,
+                          honesty.prune.leaves = TRUE,
+                          alpha = 0.05,
+                          imbalance.penalty = 0,
+                          stabilize.splits = TRUE,
+                          ci.group.size = 2,
+                          tune.parameters = "none",
+                          tune.num.trees = 200,
+                          tune.num.reps = 50,
+                          tune.num.draws = 1000,
+                          compute.oob.predictions = TRUE,
+                          num.threads = NULL,
+                          seed = runif(1, 0, .Machine$integer.max)
+)
+
+# Save (pickle) the causal forest model so we can import it in external files
+saveRDS(cf_model, file = paste0(cf_output_path, "/cf_model_math.rda"))
+# this reads in the saved model
+cf_model <- readRDS(file.path(cf_output_path, "cf_model_math.rda"))
+
+# generate CATE estimates on training data (i.e. the full sample) using leave-one-out estimates ---------
+math_cates <- predict(cf_model,
+                      newdata = NULL,
+                      estimate.variance = TRUE)
+
+math_cates <- math_cates %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(predictions / sqrt(variance.estimates)))),  
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+# causal forest doubly-robust estimate of the average treatment effect:
+math_ate <- average_treatment_effect(cf_model,
+                                     target.sample = "all",
+                                     method = "AIPW")
+
+# variable importance factors plot ----------------
+math_vif <- variable_importance(cf_model)
+math_ranked_vars <- order(math_vif, decreasing = TRUE)
+
+covariate_names <- c(
+  logenroll = "Log of Enrollment",
+  perwht = "Percent White",
+  perblk = "Percent Black",
+  perhsp = "Percent Hispanic",
+  perfrl = "Percent Free/Reduced Lunch",
+  perspeced = "Percent Special Ed",
+  urban = "Urban",
+  suburb = "Suburb",
+  town = "Town",
+  rural = "Rural",
+  p_rev = "Per Pupil Revenue",
+  p_exp = "Per Pupil Expenditure",
+  str = "Student-Teacher Ratio",
+  tea_salary = "Teacher Salary",
+  num_magnet = "Number of Magnet Schools",
+  charter_eff = "Charter Effectiveness"
+)
+
+vif_df <- data.frame(
+  Variable = X_covariates,
+  VIF_Score = as.vector(math_vif)
+)
+
+vif_df$Variable <- covariate_names[vif_df$Variable]
+
+plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
+  geom_bar(stat = "identity", fill = "steelblue") +    
+  coord_flip() +                                       
+  labs(title = "Variable Importance (VIF Scores) - Math", 
+       x = "Variable", 
+       y = "Variable Importance Score") +
+  theme_minimal() 
+
+ggsave(filename = file.path(output_path, "/figures/vif_scores_math.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# best linear projection  --------------------
+
+# (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
+# effect to see which ones are associated with higher/lower treatment effects
+math_blp <- best_linear_projection(cf_model, X_matrix[,math_ranked_vars[1:5]])
+
+blp_results <- data.frame(
+  Variable = c("(Intercept)", "logenroll", "perhsp", "perfrl", "perwht", "str"),
+  Estimate = math_blp[, 1],  
+  `Std. Error` = math_blp[, 2],  
+  `t value` = math_blp[, 3],  
+  `Pr(>|t|)` = math_blp[, 4]  
+)
+
+blp_results <- xtable(blp_results, 
+                      caption = "Best Linear Projection of the CATE - Math",
+                      align = c("l", "l", "r", "r", "r", "r"))
+
+print(blp_results,
+      file = file.path(output_path, "/tables/blp_table_math.tex"),
+      include.rownames = FALSE,
+      floating = FALSE,
+      hline.after = c(-1, 0, nrow(blp_results))
+)
+
+# Distribution of treatment effects plot -------------------
+
+plot <- ggplot(math_cates, aes(x = predictions, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  # Custom colors for 0 and 1
+  labs(title = "Distribution of Estimated Treatment Effects - Math", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-4, 4) +  
+  geom_vline(aes(xintercept = math_ate[1]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = math_ate[1], y = 20000, label = paste("ATE =", round(math_ate[1], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "/figures/cate_dist_math.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# covariate averages for significantly positive vs. negative districts: ---------------------
+charter_seda_math <- charter_seda_math %>%
+  mutate(index = row_number())
+math_cates <- math_cates %>%
+  mutate(index = row_number())
+charter_seda_math <- left_join(charter_seda_math, math_cates, by = "index")
+
+negative_effects <- charter_seda_math %>%
+  filter(predictions < 0 & significant == 1)
+
+positive_effects <- charter_seda_math %>%
+  filter(predictions > 0 & significant == 1)
+
+negative_means <- negative_effects %>%
+  summarise(across(all_of(X_covariates), mean, na.rm = TRUE))
+
+positive_means <- positive_effects %>%
+  summarise(across(all_of(X_covariates), mean, na.rm = TRUE))
+
+difference <- positive_means - negative_means
+
+n_positive <- nrow(positive_effects)
+n_negative <- nrow(negative_effects)
+
+summary_table <- bind_cols(
+  Covariate = covariate_names, 
+  `Significantly Positive` = as.numeric(positive_means),
+  `Significantly Negative` = as.numeric(negative_means),
+  `Difference (Positive - Negative)` = as.numeric(difference)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `Significantly Positive` = n_positive, 
+          `Significantly Negative` = n_negative, 
+          `Difference (Positive - Negative)` = n_positive + n_negative)
+
+summary_table <- xtable(summary_table)
+print(summary_table,
+      file = file.path(output_path, "/tables/cov_means_table_math.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+
+# Group Average Treatment Effect Table --------------------
+
+# enter subgroups of interest in this list
+subgroup_conditions <- list(
+  "Urban" = X_matrix[,"urban"] == 1
+  # "Suburban" = X_matrix[,"suburb"] == 1,
+  # "Rural" = X_matrix[,"rural"] == 1,
+  # "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+)
+
+# initializes the table to store results
+gate_results_table <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `% N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# calculate GATES
+for (group_name in names(subgroup_conditions)) {
+  
+  condition <- subgroup_conditions[[group_name]]
+  
+  gate_result <- average_treatment_effect(cf_model, 
+                                          target.sample = "all",
+                                          method = "AIPW",
+                                          subset = condition)
+  
+  gate_estimate <- gate_result[[1]]
+  gate_se <- gate_result[[2]]
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  gate_results_table <- rbind(
+    gate_results_table,
+    data.frame(
+      Group = group_name,
+      GATE = gate_estimate,
+      SE = gate_se,
+      `p-value` = p_value,
+      `Share of N` = proportion_N,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+gate_results_table <- xtable(gate_results_table)
+print(gate_results_table,
+      file = file.path(output_path, "/tables/gates_table_math.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+
+# Estimate the Causal Forest on test score data (ELA) ------------------------
+
+X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
+                  "perspeced", "urban", "suburb", "town", "rural", 
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff")
+
+charter_seda_ela <- charter_seda %>%
+  filter(!is.na(st_ela) & !is.na(inter))
+
+# global within transformation
+charter_seda_ela_panel <- pdata.frame(charter_seda_ela,
+                                       index = c("district","sgyear"))
+
+X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+  Within(charter_seda_ela_panel[[var]], effect = "twoway")
+}))
+colnames(X_matrix) <- X_covariates
+X_matrix <- as.matrix(X_matrix)
+Y_vector <- as.vector(Within(charter_seda_ela_panel$st_ela, effect = "twoway"))
+W_vector <- as.vector(Within(charter_seda_ela_panel$lag_grade, "twoway"))
+weight_vector <- as.vector(charter_seda_ela_panel$eweight)
+
+# # estimate the model - without within-transform
+# X_matrix <- as.matrix(charter_seda_ela[, X_covariates])
+# Y_vector <- as.vector(charter_seda_ela$st_ela)
+# W_vector <- as.vector(charter_seda_ela$lag_grade)
+# weight_vector <- as.vector(charter_seda_ela$eweight)
+
+cf_model <- causal_forest(X = X_matrix,
+                          Y = Y_vector,
+                          W = W_vector,
+                          Y.hat = NULL,
+                          W.hat = NULL,
+                          num.trees = 100,
+                          sample.weights = weight_vector,
+                          clusters = as.factor(charter_seda_ela_panel$district),
+                          equalize.cluster.weights = FALSE,
+                          sample.fraction = 0.5,
+                          mtry = min(ceiling(sqrt(ncol(X_matrix)) + 20), ncol(X_matrix)),
+                          min.node.size = 5,
+                          honesty = TRUE,
+                          honesty.fraction = 0.5,
+                          honesty.prune.leaves = TRUE,
+                          alpha = 0.05,
+                          imbalance.penalty = 0,
+                          stabilize.splits = TRUE,
+                          ci.group.size = 2,
+                          tune.parameters = "none",
+                          tune.num.trees = 200,
+                          tune.num.reps = 50,
+                          tune.num.draws = 1000,
+                          compute.oob.predictions = TRUE,
+                          num.threads = NULL,
+                          seed = runif(1, 0, .Machine$integer.max)
+)
+
+# Save (pickle) the causal forest model so we can import it in external files
+saveRDS(cf_model, file = paste0(cf_output_path, "/cf_model_ela.rda"))
+# this reads in the saved model
+cf_model <- readRDS(file.path(cf_output_path, "cf_model_ela.rda"))
+
+# generate CATE estimates on training data (i.e. the full sample) using leave-one-out estimates ---------
+ela_cates <- predict(cf_model,
+                      newdata = NULL,
+                      estimate.variance = TRUE)
+
+ela_cates <- ela_cates %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(predictions / sqrt(variance.estimates)))),  
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+# causal forest doubly-robust estimate of the average treatment effect:
+ela_ate <- average_treatment_effect(cf_model,
+                                     target.sample = "all",
+                                     method = "AIPW")
+
+# variable importance factors plot ----------------
+ela_vif <- variable_importance(cf_model)
+ela_ranked_vars <- order(ela_vif, decreasing = TRUE)
+
+covariate_names <- c(
+  logenroll = "Log of Enrollment",
+  perwht = "Percent White",
+  perblk = "Percent Black",
+  perhsp = "Percent Hispanic",
+  perfrl = "Percent Free/Reduced Lunch",
+  perspeced = "Percent Special Ed",
+  urban = "Urban",
+  suburb = "Suburb",
+  town = "Town",
+  rural = "Rural",
+  p_rev = "Per Pupil Revenue",
+  p_exp = "Per Pupil Expenditure",
+  str = "Student-Teacher Ratio",
+  tea_salary = "Teacher Salary",
+  num_magnet = "Number of Magnet Schools",
+  charter_eff = "Charter Effectiveness"
+)
+
+vif_df <- data.frame(
+  Variable = X_covariates,
+  VIF_Score = as.vector(ela_vif)
+)
+
+vif_df$Variable <- covariate_names[vif_df$Variable]
+
+plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
+  geom_bar(stat = "identity", fill = "steelblue") +    
+  coord_flip() +                                       
+  labs(title = "Variable Importance (VIF Scores) - Math", 
+       x = "Variable", 
+       y = "Variable Importance Score") +
+  theme_minimal() 
+
+ggsave(filename = file.path(output_path, "/figures/vif_scores_ela.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# best linear projection  --------------------
+
+# (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
+# effect to see which ones are associated with higher/lower treatment effects
+ela_blp <- best_linear_projection(cf_model, X_matrix[,ela_ranked_vars[1:5]])
+
+blp_results <- data.frame(
+  Variable = c("(Intercept)", "logenroll", "perhsp", "perfrl", "perwht", "str"),
+  Estimate = ela_blp[, 1],  
+  `Std. Error` = ela_blp[, 2],  
+  `t value` = ela_blp[, 3],  
+  `Pr(>|t|)` = ela_blp[, 4]  
+)
+
+blp_results <- xtable(blp_results, 
+                      caption = "Best Linear Projection of the CATE - ELA",
+                      align = c("l", "l", "r", "r", "r", "r"))
+
+print(blp_results,
+      file = file.path(output_path, "/tables/blp_table_ela.tex"),
+      include.rownames = FALSE,
+      floating = FALSE,
+      hline.after = c(-1, 0, nrow(blp_results))
+)
+
+# Distribution of treatment effects plot -------------------
+
+plot <- ggplot(ela_cates, aes(x = predictions, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  # Custom colors for 0 and 1
+  labs(title = "Distribution of Estimated Treatment Effects - ELA", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-2.5, 2.5) +  
+  geom_vline(aes(xintercept = ela_ate[1]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = ela_ate[1], y = 20000, label = paste("ATE =", round(ela_ate[1], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "/figures/cate_dist_ela.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# covariate averages for significantly positive vs. negative districts: ---------------------
+charter_seda_ela <- charter_seda_ela %>%
+  mutate(index = row_number())
+ela_cates <- ela_cates %>%
+  mutate(index = row_number())
+charter_seda_ela <- left_join(charter_seda_ela, ela_cates, by = "index")
+
+negative_effects <- charter_seda_ela %>%
+  filter(predictions < 0 & significant == 1)
+
+positive_effects <- charter_seda_ela %>%
+  filter(predictions > 0 & significant == 1)
+
+negative_means <- negative_effects %>%
+  summarise(across(all_of(X_covariates), mean, na.rm = TRUE))
+
+positive_means <- positive_effects %>%
+  summarise(across(all_of(X_covariates), mean, na.rm = TRUE))
+
+difference <- positive_means - negative_means
+
+n_positive <- nrow(positive_effects)
+n_negative <- nrow(negative_effects)
+
+summary_table <- bind_cols(
+  Covariate = covariate_names, 
+  `Significantly Positive` = as.numeric(positive_means),
+  `Significantly Negative` = as.numeric(negative_means),
+  `Difference (Positive - Negative)` = as.numeric(difference)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `Significantly Positive` = n_positive, 
+          `Significantly Negative` = n_negative, 
+          `Difference (Positive - Negative)` = n_positive + n_negative)
+
+summary_table <- xtable(summary_table)
+print(summary_table,
+      file = file.path(output_path, "/tables/cov_means_table_ela.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+
+# Group Average Treatment Effect Table --------------------
+
+# enter subgroups of interest in this list
+subgroup_conditions <- list(
+  "Urban" = X_matrix[,"urban"] == 1
+  #"Suburban" = X_matrix[,"suburb"] == 1,
+  #"Rural" = X_matrix[,"rural"] == 1,
+  #"Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+)
+
+# initializes the table to store results
+gate_results_table <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `% N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# calculate GATES
+for (group_name in names(subgroup_conditions)) {
+  
+  condition <- subgroup_conditions[[group_name]]
+  
+  gate_result <- average_treatment_effect(cf_model, 
+                                          target.sample = "all",
+                                          method = "AIPW",
+                                          subset = condition)
+  
+  gate_estimate <- gate_result[[1]]
+  gate_se <- gate_result[[2]]
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  gate_results_table <- rbind(
+    gate_results_table,
+    data.frame(
+      Group = group_name,
+      GATE = gate_estimate,
+      SE = gate_se,
+      `p-value` = p_value,
+      `Share of N` = proportion_N,
+      stringsAsFactors = FALSE
+    )
+  )
+}
+
+gate_results_table <- xtable(gate_results_table)
+print(gate_results_table,
+      file = file.path(output_path, "/tables/gates_table_ela.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
