@@ -4,7 +4,9 @@
 This script produces the causal forest estimates of treatment effect heterogeneity for CHL(2024). 
 "
 
-# Imports ------------------
+###########                        ################
+###########Graduation Rate results ################
+###########                       #################
 
 rm(list = ls())
 
@@ -22,15 +24,6 @@ cf_output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulan
 #charter_afgr2 <- read_dta(file.path(data_path, "charter_afgr2.dta"))
 charter_afgr2 <- read_dta(file.path(data_path, "charter_afgr2_c.dta")) #this one is fully cleaned
 
-# Import test score data
-#charter_seda <- read_dta(file.path(data_path, "charter_seda.dta"))
-charter_seda <- read_dta(file.path(data_path, "charter_seda_c.dta")) #this one is fully cleaned
-# NOTE: MAY WANT TO DO THESE ONE-AT-A-TIME TO SAVE RAM
-
-
-###########                        ################
-###########Graduation Rate results ################
-###########                       #################
 # Estimate Causal Forest on graduation rate data -------------------------
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
@@ -104,7 +97,8 @@ afgr_cates <- predict(cf_model,
 afgr_cates <- afgr_cates %>%
   mutate(
     p_value = 2 * (1 - pnorm(abs(predictions / sqrt(variance.estimates)))),  
-    significant = if_else(p_value <= 0.1, 1, 0)
+    significant = if_else(p_value <= 0.1, 1, 0),
+    dr_score = get_scores(cf_model)
   )
 
 # causal forest doubly-robust estimate of the average treatment effect:
@@ -243,12 +237,20 @@ print(summary_table,
 
 # Group Average Treatment Effect Table --------------------
 
-# enter subgroups of interest in this list
+# # enter subgroups of interest in this list
+# # this applies to the other, slower, commented out code
+# subgroup_conditions <- list(
+#   "Urban" = X_matrix[,"urban"] == 1,
+#   "Suburban" = X_matrix[,"suburb"] == 1,
+#   "Rural" = X_matrix[,"rural"] == 1,
+#   "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+# )
+
 subgroup_conditions <- list(
-  "Urban" = X_matrix[,"urban"] == 1,
-  "Suburban" = X_matrix[,"suburb"] == 1
-  # "Rural" = X_matrix[,"rural"] == 1,
-  # "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+  "Urban" = charter_afgr2_clean[,"urban"] == 1,
+  "Suburban" = charter_afgr2_clean[,"suburb"] == 1,
+  "Rural" = charter_afgr2_clean[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = charter_afgr2_clean[,"perfrl"] > 0.20
 )
 
 # initializes the table to store results
@@ -262,34 +264,40 @@ gate_results_table <- data.frame(
 )
 
 # calculate GATES
+
 for (group_name in names(subgroup_conditions)) {
   
   condition <- subgroup_conditions[[group_name]]
   
-  gate_result <- average_treatment_effect(cf_model, 
-                                          target.sample = "all",
-                                          method = "AIPW",
-                                          subset = condition)
+  ## this commented code works but is very slow because it re-estimate dr_scores for each condition
+  # gate_result <- average_treatment_effect(cf_model, 
+  #                                         target.sample = "all",
+  #                                         method = "AIPW",
+  #                                         subset = condition)
   
-  gate_estimate <- gate_result[[1]]
-  gate_se <- gate_result[[2]]
+  # gate_estimate <- gate_result[[1]]
+  # gate_se <- gate_result[[2]]
+  
+  filtered_df <- charter_afgr2_clean[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
   
   z_score <- gate_estimate / gate_se
   p_value <- 2 * (1 - pnorm(abs(z_score)))
   
   proportion_N <- mean(condition)
   
-  gate_results_table <- rbind(
-    gate_results_table,
-    data.frame(
-      Group = group_name,
-      GATE = gate_estimate,
-      SE = gate_se,
-      `p-value` = p_value,
-      `Share of N` = proportion_N,
-      stringsAsFactors = FALSE
-    )
+  new_row <- data.frame(
+    Group = group_name,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    `Share of N` = proportion_N,
+    stringsAsFactors = FALSE
   )
+  
+  gate_results_table <- rbind(gate_results_table, new_row)
 }
 
 gate_results_table <- xtable(gate_results_table)
@@ -302,6 +310,22 @@ print(gate_results_table,
 ###########                        ################
 ###########  Test Score results    ################
 ###########                        ################
+
+rm(list = ls())
+
+library(tidyverse)
+library(haven)
+library(grf)
+library(xtable)
+library(plm)
+
+data_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/data"
+output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output"
+cf_output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/large_output"
+
+# Import test score data
+#charter_seda <- read_dta(file.path(data_path, "charter_seda.dta"))
+charter_seda <- read_dta(file.path(data_path, "charter_seda_c.dta")) #this one is fully cleaned
 
 # Estimate Causal Forest on test score data (MATH) -------------------------
 
@@ -373,7 +397,8 @@ math_cates <- predict(cf_model,
 math_cates <- math_cates %>%
   mutate(
     p_value = 2 * (1 - pnorm(abs(predictions / sqrt(variance.estimates)))),  
-    significant = if_else(p_value <= 0.1, 1, 0)
+    significant = if_else(p_value <= 0.1, 1, 0),
+    dr_score = get_scores(cf_model)
   )
 
 # causal forest doubly-robust estimate of the average treatment effect:
@@ -509,12 +534,20 @@ print(summary_table,
 
 # Group Average Treatment Effect Table --------------------
 
-# enter subgroups of interest in this list
+# # enter subgroups of interest in this list
+# # this is old, slower code
+# subgroup_conditions <- list(
+#   "Urban" = X_matrix[,"urban"] == 1,
+#   "Suburban" = X_matrix[,"suburb"] == 1,
+#   "Rural" = X_matrix[,"rural"] == 1,
+#   "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+# )
+
 subgroup_conditions <- list(
-  "Urban" = X_matrix[,"urban"] == 1
-  # "Suburban" = X_matrix[,"suburb"] == 1,
-  # "Rural" = X_matrix[,"rural"] == 1,
-  # "Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+  "Urban" = charter_seda_math[,"urban"] == 1,
+  "Suburban" = charter_seda_math[,"suburb"] == 1,
+  "Rural" = charter_seda_math[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = charter_seda_math[,"perfrl"] > 0.20
 )
 
 # initializes the table to store results
@@ -532,30 +565,35 @@ for (group_name in names(subgroup_conditions)) {
   
   condition <- subgroup_conditions[[group_name]]
   
-  gate_result <- average_treatment_effect(cf_model, 
-                                          target.sample = "all",
-                                          method = "AIPW",
-                                          subset = condition)
+  ## this commented code works but is very slow because it re-estimate dr_score for each condition
+  # gate_result <- average_treatment_effect(cf_model, 
+  #                                         target.sample = "all",
+  #                                         method = "AIPW",
+  #                                         subset = condition)
   
-  gate_estimate <- gate_result[[1]]
-  gate_se <- gate_result[[2]]
+  # gate_estimate <- gate_result[[1]]
+  # gate_se <- gate_result[[2]]
+  
+  filtered_df <- charter_seda_math[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
   
   z_score <- gate_estimate / gate_se
   p_value <- 2 * (1 - pnorm(abs(z_score)))
   
   proportion_N <- mean(condition)
   
-  gate_results_table <- rbind(
-    gate_results_table,
-    data.frame(
-      Group = group_name,
-      GATE = gate_estimate,
-      SE = gate_se,
-      `p-value` = p_value,
-      `Share of N` = proportion_N,
-      stringsAsFactors = FALSE
-    )
+  new_row <- data.frame(
+    Group = group_name,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    `Share of N` = proportion_N,
+    stringsAsFactors = FALSE
   )
+  
+  gate_results_table <- rbind(gate_results_table, new_row)
 }
 
 gate_results_table <- xtable(gate_results_table)
@@ -634,7 +672,8 @@ ela_cates <- predict(cf_model,
 ela_cates <- ela_cates %>%
   mutate(
     p_value = 2 * (1 - pnorm(abs(predictions / sqrt(variance.estimates)))),  
-    significant = if_else(p_value <= 0.1, 1, 0)
+    significant = if_else(p_value <= 0.1, 1, 0),
+    dr_score = get_scores(cf_model)
   )
 
 # causal forest doubly-robust estimate of the average treatment effect:
@@ -770,12 +809,20 @@ print(summary_table,
 
 # Group Average Treatment Effect Table --------------------
 
-# enter subgroups of interest in this list
+# # enter subgroups of interest in this list
+# # this is for the old, slow code
+# subgroup_conditions <- list(
+#   "Urban" = X_matrix[,"urban"] == 1
+#   #"Suburban" = X_matrix[,"suburb"] == 1,
+#   #"Rural" = X_matrix[,"rural"] == 1,
+#   #"Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+# )
+
 subgroup_conditions <- list(
-  "Urban" = X_matrix[,"urban"] == 1
-  #"Suburban" = X_matrix[,"suburb"] == 1,
-  #"Rural" = X_matrix[,"rural"] == 1,
-  #"Percent Free Lunch > 20%" = X_matrix[,"perfrl"] > 0.20
+  "Urban" = charter_seda_ela[,"urban"] == 1,
+  "Suburban" = charter_seda_ela[,"suburb"] == 1,
+  "Rural" = charter_seda_ela[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = charter_seda_ela[,"perfrl"] > 0.20
 )
 
 # initializes the table to store results
@@ -793,30 +840,35 @@ for (group_name in names(subgroup_conditions)) {
   
   condition <- subgroup_conditions[[group_name]]
   
-  gate_result <- average_treatment_effect(cf_model, 
-                                          target.sample = "all",
-                                          method = "AIPW",
-                                          subset = condition)
+  ## this commented code works but is very slow because it re-estimate dr_score for each condition
+  # gate_result <- average_treatment_effect(cf_model, 
+  #                                         target.sample = "all",
+  #                                         method = "AIPW",
+  #                                         subset = condition)
   
-  gate_estimate <- gate_result[[1]]
-  gate_se <- gate_result[[2]]
+  # gate_estimate <- gate_result[[1]]
+  # gate_se <- gate_result[[2]]
+  
+  filtered_df <- charter_seda_ela[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
   
   z_score <- gate_estimate / gate_se
   p_value <- 2 * (1 - pnorm(abs(z_score)))
   
   proportion_N <- mean(condition)
   
-  gate_results_table <- rbind(
-    gate_results_table,
-    data.frame(
-      Group = group_name,
-      GATE = gate_estimate,
-      SE = gate_se,
-      `p-value` = p_value,
-      `Share of N` = proportion_N,
-      stringsAsFactors = FALSE
-    )
+  new_row <- data.frame(
+    Group = group_name,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    `Share of N` = proportion_N,
+    stringsAsFactors = FALSE
   )
+  
+  gate_results_table <- rbind(gate_results_table, new_row)
 }
 
 gate_results_table <- xtable(gate_results_table)

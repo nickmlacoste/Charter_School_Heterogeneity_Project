@@ -14,61 +14,138 @@
 \begin{document} % All begin commands must be paired with an end command somewhere
     \maketitle % creates title using infromation in preamble (title, author, date)
 
-\section{Graduation Rate Results}
+I display the following figures and tables for each of the 3 main outcomes (Graduation rates, Math scores, ELA scores) in this order:
+\begin{enumerate}
+	\item \textbf{Variable Importance Factors (VIF)} -- These represent the depth-weigthed share of trees that split along a given covariate in the causal forest. Earlier splits are weighted more heavily. This produces a simple measure for the relative predictive power of each covariate in mapping heterogeneous treatment effects. For example, a VIF = 0.2 for variable $k$ would indicate that approximately 20\% of trees split on variable $k$. This is approximate because it may be that fewer than 20\% of the trees used variable $k$ if the trees that did use $k$ tended to split earlier on it, or more than 20\% if they tended to split later.
+	\item \textbf{CATE Distribution} -- This is the distribution of district $\times$ year treatment effects. They're interpreted as average partial effects on a given district in a given year. For example, a coefficient of 0.5 indicates that increasing the charter share in district $d$ in year $t$ would have increased the outcome by 0.5pp.
+	\item \textbf{Group Covariate Means} -- I display a table which examines the averages of each predictive covariate within districts that have significantly positive CATEs vs. districts that have significantly negative CATES. I also include the difference-in-means, though I have not yet added stars to highlight if the difference in statistically significant. 
+	\item \textbf{ATE's of pre-specified subgroups (GATEs)} -- For now I just look at a few subgroups, but I plan to add more as we see fit. These tables display the average treatment effect within districts that meet a specified criteria. For example, I examine the group average treatment effect (GATE) for districts that are ``urban" vs. ``suburban" vs. ``rural." I also include (arbitrarily) the GATE of districts where $> 20\%$ of students are on free lunch.
+	\item \textbf{Best Linear Projection (BLP)} -- Here I run a regression of each covariate on the predicted treatment effect: $\hat{\tau}(x) = \alpha + \boldsymbol{\beta} \boldsymbol{X}_i + \varepsilon$. The coefficients highlight the (linear) correlation between covariate values and the treatment effects. So for example, if the coefficient of log(enrollment) is positive, then this indicates that greater values of log(enrollment) are associated with larger CATE estimates. Note that I only use the top 5 covariates according to VIF score. 
+\end{enumerate}
+
+	\section{Graduation Rate Results}
+
+	Figure \ref{fig:image1} shows the VIF scores for graduation rates. 
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/vif_scores_afgr.png}
+\caption{VIF Scores: Graduation Rates}
+\label{fig:image1}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 1 plots VIF scores -- the share of total trees which use a given baseline covariate to perform splitting, weighted by the depth at which the split occurred so that earlier splits within a tree count for slightly more.  
+\end{minipage}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_afgr.png}
+\caption{Treatment Effect Distribution: Graduation Rates}
+\label{fig:image2}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 2 plots the distribution of district $\times$ year treatment effects for graduation rates. These are interrpeted as average partial effects of a given district in a given year. That is, each point represents $\frac{Cov[Y, W | X = x]}{Var[W | X = x]} = E\left[ \frac{\partial \tau(x)}{\partial x} \right]$, the predicted treatment effect from increasing the charter share in year $t$ by 1 percentage point.
+\end{minipage}
+\end{figure}
+
+	
 
 Table 1: Group covariate means between significantly positive districts vs. significantly negative districts\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_afgr.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_afgr.tex}\\
 
 
 Table 2: Avg treatment effects of pre-specified subgroups\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/gates_table_afgr.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/gates_table_afgr.tex}\\
 
 Table 3: Best linear projection $\tau(X) = \alpha + \beta X + e$\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_afgr.tex}
-
-Figure 1: VIF scores\\
-\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/vif_scores_afgr.png}
-	
-Figure 2: CATE distribution\\
-\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_afgr.png}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_afgr.tex}\\
 
 
-\section{Math Test Scores}
+
+
+	\section{Math Test Scores}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/vif_scores_math.png}
+\caption{VIF Scores: Math Scores}
+\label{fig:image3}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 3 plots VIF scores for Math -- the share of total trees which use a given baseline covariate to perform splitting, weighted by the depth at which the split occurred so that earlier splits within a tree count for slightly more.  
+\end{minipage}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_math.png}
+\caption{Treatment Effect Distribution: Math Scores}
+\label{fig:image4}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 4 plots the distribution of district $\times$ year treatment effects for math scores. These are interrpeted as average partial effects of a given district in a given year. That is, each point represents $\frac{Cov[Y, W | X = x]}{Var[W | X = x]} = E\left[ \frac{\partial \tau(x)}{\partial x} \right]$, the predicted treatment effect from increasing the charter share in year $t$ by 1 percentage point.
+\end{minipage}
+\end{figure}
+
 
 Table 4: Group covariate means between significantly positive districts vs. significantly negative districts\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_math.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_math.tex}\\
 
 
 Table 5: Avg treatment effects of pre-specified subgroups \\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/gates_table_math.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/gates_table_math.tex}\\
 
 Table 6: Best linear projection $\tau(X) = \alpha + \beta X + e$\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_math.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_math.tex}\\
 
-Figure 3: VIF scores\\
-\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/vif_scores_math.png}
-	
-Figure 4: CATE distribution\\
-\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_math.png}
 
-\section{ELA Test Scores}
-	
-	
+	\section{ELA Test Scores}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/vif_scores_ela.png}
+\caption{VIF Scores: ELA Scores}
+\label{fig:image5}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 5 plots VIF scores for ELA -- the share of total trees which use a given baseline covariate to perform splitting, weighted by the depth at which the split occurred so that earlier splits within a tree count for slightly more.  
+\end{minipage}
+\end{figure}
+
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_ela.png}
+\caption{Treatment Effect Distribution: ELA Scores}
+\label{fig:image6}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 6 plots the distribution of district $\times$ year treatment effects for ELA scores. These are interrpeted as average partial effects of a given district in a given year. That is, each point represents $\frac{Cov[Y, W | X = x]}{Var[W | X = x]} = E\left[ \frac{\partial \tau(x)}{\partial x} \right]$, the predicted treatment effect from increasing the charter share in year $t$ by 1 percentage point.
+\end{minipage}
+\end{figure}
+
+
+
 Table 7: Group covariate means between significantly positive districts vs. significantly negative districts\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_ela.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_ela.tex}\\
 
 
 Table 8: Avg treatment effects of pre-specified subgroups\\
-\input{gates_table_ela.tex}
+\input{gates_table_ela.tex}\\
 
 Table 9: Best linear projection $\tau(X) = \alpha + \beta X + e$\\
-\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_ela.tex}
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_ela.tex}\\
 
-Figure 5: VIF scores\\
-\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/vif_scores_ela.png}
-	
-Figure 6: CATE distribution\\
-\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_ela.png}
+
 
 	
 	
