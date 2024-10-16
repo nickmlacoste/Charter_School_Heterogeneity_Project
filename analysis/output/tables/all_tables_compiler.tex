@@ -1,10 +1,11 @@
 \documentclass{article} % \documentclass{} is the first command in any LaTeX code.  It is used to define what kind of document you are creating such as an article or a book, and begins the document preamble
 
-\usepackage{amsmath, listings, tikz, graphicx, float, bbm, hyperref, amssymb, setspace, indentfirst, dcolumn, booktabs, adjustbox}  % \usepackage is a command that allows you to add functionality to your LaTeX code
+\usepackage{amsmath, listings, graphicx, float, bbm, hyperref, amssymb, setspace, indentfirst, dcolumn, booktabs, url, changepage, tabularx, adjustbox, caption, amsthm, subcaption}
+\usepackage[table]{xcolor}
+\usepackage[normalem]{ulem}
 \usepackage[authoryear, round]{natbib}
 \usepackage[margin=1in]{geometry}
 \setcitestyle{aysep={,},yysep={,},citesep={;},maxcitenames=2}
-%\usetikzlibrary{trees}
 
 \title{Charter School Heterogeneity: CF Output Tables} % Sets article title
 \author{Nicholas Lacoste} % Sets authors name
@@ -74,11 +75,14 @@ I display the following figures and tables for each of the 3 main outcomes (Grad
 Table 1: Group covariate means between significantly positive districts vs. significantly negative districts\\
 \input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/cov_means_table_afgr.tex}\\
 
+Table \ref{tab:state_gates_afgr}: Avg treatment effects within US states\\
+\input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/state_gates_table_afgr.tex}\\
 
-Table 2: Avg treatment effects of pre-specified subgroups\\
+
+Table 3: Avg treatment effects of pre-specified subgroups\\
 \input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/gates_table_afgr.tex}\\
 
-Table 3: Best linear projection $\tau(X) = \alpha + \beta X + e$\\
+Table 4: Best linear projection $\tau(X) = \alpha + \beta X + e$\\
 \input{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/tables/blp_table_afgr.tex}\\
 
 
