@@ -14,6 +14,8 @@ library(tidyverse)
 library(haven)
 library(grf)
 library(xtable)
+library(knitr)
+library(kableExtra)
 library(plm)
 
 data_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/data"
@@ -314,6 +316,119 @@ print(gate_results_table,
       include.rownames = TRUE,
       floating = FALSE)
 
+# GATE table within states --------------------
+
+# Initialize the table to store results
+state_results_table <- data.frame(
+  State = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `Share of N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Get unique state names
+unique_states <- unique(charter_afgr2_clean$statename)
+
+# Loop through each state and calculate the required statistics
+for (state in unique_states) {
+  
+  condition <- charter_afgr2_clean$statename == state
+  filtered_df <- charter_afgr2_clean[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  # Determine significance stars
+  stars <- ifelse(p_value < 0.01, "***",
+                  ifelse(p_value < 0.05, "**",
+                         ifelse(p_value < 0.1, "*", "")))
+  
+  # Create GATE with stars
+  gate_with_stars <- paste0(round(gate_estimate, 3), stars)
+  
+  new_row <- data.frame(
+    State = state,
+    GATE = gate_with_stars,
+    SE = round(gate_se, 3),
+    `p-value` = round(p_value, 3),
+    `Share of N` = round(proportion_N, 3),
+    stringsAsFactors = FALSE
+  )
+  
+  state_results_table <- rbind(state_results_table, new_row)
+}
+
+# Create the LaTeX table
+kable(state_results_table, 
+      caption = "GATEs within States (Graduation Rates)",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "state_gates_afgr") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/state_gates_table_afgr.tex"))
+
+# GATE bar graph at treatment dosage levels -----------------
+
+# Filter the data to include only treated units (lag_share > 0)
+treated_units <- charter_afgr2_clean %>% filter(lag_share > 0)
+
+# Calculate deciles of lag_share among treated units
+treated_units$lag_share_decile <- ntile(treated_units$lag_share, 10)
+
+# Calculate decile thresholds
+decile_thresholds <- quantile(treated_units$lag_share, probs = seq(0, 1, 0.1), na.rm = TRUE)
+
+# Initialize the table to store results
+decile_results_table <- data.frame(
+  Decile = integer(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Loop through each decile and calculate the required statistics
+for (decile in 1:10) {
+  
+  condition <- treated_units$lag_share_decile == decile
+  filtered_df <- treated_units[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  new_row <- data.frame(
+    Decile = decile,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    stringsAsFactors = FALSE
+  )
+  
+  decile_results_table <- rbind(decile_results_table, new_row)
+}
+
+# Create the bar graph using ggplot2
+plot <- ggplot(decile_results_table, aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
+  labs(x = "Treatment Dosage Decile", y = "GATE", 
+       title = "GATE within Different Deciles of Lag Share (Graduation Rates)") +
+  theme_minimal()
+
+# Save the plot
+ggsave(filename = file.path(output_path, "figures/gate_deciles_afgr.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+
 
 ###########                        ################
 ###########  Test Score results    ################
@@ -325,6 +440,8 @@ library(tidyverse)
 library(haven)
 library(grf)
 library(xtable)
+library(knitr)
+library(kableExtra)
 library(plm)
 
 data_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/data"
@@ -620,6 +737,119 @@ print(gate_results_table,
       include.rownames = TRUE,
       floating = FALSE)
 
+# GATE table within states (MATH) ------------------
+
+# Initialize the table to store results
+state_results_table <- data.frame(
+  State = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `Share of N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Get unique state names
+unique_states <- unique(charter_seda_math$statename)
+
+# Loop through each state and calculate the required statistics
+for (state in unique_states) {
+  
+  condition <- charter_seda_math$statename == state
+  filtered_df <- charter_seda_math[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  # Determine significance stars
+  stars <- ifelse(p_value < 0.01, "***",
+                  ifelse(p_value < 0.05, "**",
+                         ifelse(p_value < 0.1, "*", "")))
+  
+  # Create GATE with stars
+  gate_with_stars <- paste0(round(gate_estimate, 3), stars)
+  
+  new_row <- data.frame(
+    State = state,
+    GATE = gate_with_stars,
+    SE = round(gate_se, 3),
+    `p-value` = round(p_value, 3),
+    `Share of N` = round(proportion_N, 3),
+    stringsAsFactors = FALSE
+  )
+  
+  state_results_table <- rbind(state_results_table, new_row)
+}
+
+# Create the LaTeX table
+kable(state_results_table, 
+      caption = "GATEs within States (Math Scores)",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "state_gates_math") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/state_gates_table_math.tex"))
+
+# GATE bar graph at different dosage levels (MATH) -----------------------
+
+# Filter the data to include only treated units (lag_share > 0)
+treated_units <- charter_seda_math %>% filter(lag_share > 0)
+
+# Calculate deciles of lag_share among treated units
+treated_units$lag_share_decile <- ntile(treated_units$lag_share, 10)
+
+# Calculate decile thresholds
+decile_thresholds <- quantile(treated_units$lag_share, probs = seq(0, 1, 0.1), na.rm = TRUE)
+
+# Initialize the table to store results
+decile_results_table <- data.frame(
+  Decile = integer(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Loop through each decile and calculate the required statistics
+for (decile in 1:10) {
+  
+  condition <- treated_units$lag_share_decile == decile
+  filtered_df <- treated_units[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  new_row <- data.frame(
+    Decile = decile,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    stringsAsFactors = FALSE
+  )
+  
+  decile_results_table <- rbind(decile_results_table, new_row)
+}
+
+# Create the bar graph using ggplot2
+plot <- ggplot(decile_results_table, 
+               aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
+  labs(x = "Treatment Dosage Decile", y = "GATE", 
+       title = "GATE within Different Deciles of Lag Share (Math Scores)") +
+  theme_minimal()
+
+# Save the plot
+ggsave(filename = file.path(output_path, "figures/gate_deciles_math.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
 
 # Estimate the Causal Forest on test score data (ELA) ------------------------
 
@@ -905,9 +1135,119 @@ print(gate_results_table,
       include.rownames = TRUE,
       floating = FALSE)
 
+# GATE table within states (ELA) ------------------
+
+# Initialize the table to store results
+state_results_table <- data.frame(
+  State = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `Share of N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Get unique state names
+unique_states <- unique(charter_seda_ela$statename)
+
+# Loop through each state and calculate the required statistics
+for (state in unique_states) {
+  
+  condition <- charter_seda_ela$statename == state
+  filtered_df <- charter_seda_ela[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  # Determine significance stars
+  stars <- ifelse(p_value < 0.01, "***",
+                  ifelse(p_value < 0.05, "**",
+                         ifelse(p_value < 0.1, "*", "")))
+  
+  # Create GATE with stars
+  gate_with_stars <- paste0(round(gate_estimate, 3), stars)
+  
+  new_row <- data.frame(
+    State = state,
+    GATE = gate_with_stars,
+    SE = round(gate_se, 3),
+    `p-value` = round(p_value, 3),
+    `Share of N` = round(proportion_N, 3),
+    stringsAsFactors = FALSE
+  )
+  
+  state_results_table <- rbind(state_results_table, new_row)
+}
+
+# Create the LaTeX table
+kable(state_results_table, 
+      caption = "GATEs within States (ELA Scores)",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "state_gates_ela") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/state_gates_table_ela.tex"))
 
 
+# GATE bar graph at different dosage levels (ELA) -----------------------
 
+# Filter the data to include only treated units (lag_share > 0)
+treated_units <- charter_seda_ela %>% filter(lag_share > 0)
+
+# Calculate deciles of lag_share among treated units
+treated_units$lag_share_decile <- ntile(treated_units$lag_share, 10)
+
+# Calculate decile thresholds
+decile_thresholds <- quantile(treated_units$lag_share, probs = seq(0, 1, 0.1), na.rm = TRUE)
+
+# Initialize the table to store results
+decile_results_table <- data.frame(
+  Decile = integer(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Loop through each decile and calculate the required statistics
+for (decile in 1:10) {
+  
+  condition <- treated_units$lag_share_decile == decile
+  filtered_df <- treated_units[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  new_row <- data.frame(
+    Decile = decile,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    stringsAsFactors = FALSE
+  )
+  
+  decile_results_table <- rbind(decile_results_table, new_row)
+}
+
+# Create the bar graph using ggplot2
+plot <- ggplot(decile_results_table, 
+               aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
+  labs(x = "Treatment Dosage Decile", y = "GATE", 
+       title = "GATE within Different Deciles of Lag Share (ELA Scores)") +
+  theme_minimal()
+
+# Save the plot
+ggsave(filename = file.path(output_path, "figures/gate_deciles_ela.png"), plot = plot, 
+       width = 8, height = 6, dpi = 300)
 
 
 
