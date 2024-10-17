@@ -406,18 +406,31 @@ kable(state_results_table,
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   save_kable(file = file.path(output_path, "tables/state_gates_table_afgr.tex"))
 
-# GATE bar graph at different dosage levels (MATH) -----------------------
+# GATE bar graph at different dosage levels (grad rates) -----------------------
 
-# Filter the data to include only treated units (lag_share > 0)
-treated_units <- charter_afgr2_clean %>% filter(lag_share > 0)
+# Step 1: Calculate the treatment_dose_change variable and create a new column for the lag of lag_share
+charter_afgr2_dosage <- charter_afgr2_clean %>%
+  group_by(district) %>%
+  arrange(district, stateyear) %>%
+  mutate(
+    lag_lag_share = Hmisc::Lag(lag_share),
+    treatment_dose_change = lag_share - lag_lag_share
+  ) %>%
+  ungroup()
 
-# Calculate deciles of lag_share among treated units
-treated_units$lag_share_decile <- ntile(treated_units$lag_share, 10)
+# Step 2: Filter the data to include only units where treatment_dose_change is non-zero
+charter_afgr2_dosage <- charter_afgr2_dosage %>%
+  filter(treatment_dose_change != 0)
+
+# Step 3: Group into deciles based on the lag of lag_share
+charter_afgr2_dosage <- charter_afgr2_dosage %>%
+  mutate(lag_share_decile = ntile(lag_lag_share, 10))
 
 # Calculate decile thresholds
-decile_thresholds <- quantile(treated_units$lag_share, probs = seq(0, 1, 0.1), na.rm = TRUE)
+decile_thresholds <- quantile(charter_afgr2_dosage$lag_lag_share, 
+                              probs = seq(0, 1, 0.1), na.rm = TRUE)
 
-# Initialize the table to store results
+# Step 4: Estimate GATEs by average CATE predictions from the current year
 decile_results_table <- data.frame(
   Decile = integer(),
   GATE = numeric(),
@@ -426,11 +439,10 @@ decile_results_table <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# Loop through each decile and calculate the required statistics
 for (decile in 1:10) {
   
-  condition <- treated_units$lag_share_decile == decile
-  filtered_df <- treated_units[condition, ]
+  condition <- charter_afgr2_dosage$lag_share_decile == decile
+  filtered_df <- charter_afgr2_dosage[condition, ]
   
   gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
   gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
@@ -449,17 +461,16 @@ for (decile in 1:10) {
   decile_results_table <- rbind(decile_results_table, new_row)
 }
 
-# Create the bar graph using ggplot2
-plot <- ggplot(decile_results_table, 
-               aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+# Step 5: Plot the bar graph
+plot <- ggplot(decile_results_table, aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Treatment Dosage Decile", y = "GATE", 
-       title = "GATE within Different Deciles of Lag Share (Graduation Rates)") +
+  labs(x = "Lag Share Decile Threshold", y = "GATE", title = "GATE within Different Deciles of Lag Share") +
   theme_minimal()
 
 # Save the plot
-ggsave(filename = file.path(output_path, "figures/gate_deciles_afgr.png"), plot = plot, 
+ggsave(filename = file.path(output_path, "figures/gate_deciles_afgr.png"), 
+       plot = plot, 
        width = 8, height = 6, dpi = 300)
 
 
@@ -863,16 +874,29 @@ kable(state_results_table,
 
 # GATE bar graph at different dosage levels (MATH) -----------------------
 
-# Filter the data to include only treated units (lag_share > 0)
-treated_units <- charter_seda_math %>% filter(lag_share > 0)
+# Step 1: Calculate the treatment_dose_change variable and create a new column for the lag of lag_share
+charter_seda_math_dosage <- charter_seda_math %>%
+  group_by(district) %>%
+  arrange(district, stateyear) %>%
+  mutate(
+    lag_lag_share = Hmisc::Lag(lag_share),
+    treatment_dose_change = lag_share - lag_lag_share
+  ) %>%
+  ungroup()
 
-# Calculate deciles of lag_share among treated units
-treated_units$lag_share_decile <- ntile(treated_units$lag_share, 10)
+# Step 2: Filter the data to include only units where treatment_dose_change is non-zero
+charter_seda_math_dosage <- charter_seda_math_dosage %>%
+  filter(treatment_dose_change != 0)
+
+# Step 3: Group into deciles based on the lag of lag_share
+charter_seda_math_dosage <- charter_seda_math_dosage %>%
+  mutate(lag_share_decile = ntile(lag_lag_share, 10))
 
 # Calculate decile thresholds
-decile_thresholds <- quantile(treated_units$lag_share, probs = seq(0, 1, 0.1), na.rm = TRUE)
+decile_thresholds <- quantile(charter_seda_math_dosage$lag_lag_share, 
+                              probs = seq(0, 1, 0.1), na.rm = TRUE)
 
-# Initialize the table to store results
+# Step 4: Estimate GATEs by average CATE predictions from the current year
 decile_results_table <- data.frame(
   Decile = integer(),
   GATE = numeric(),
@@ -881,11 +905,10 @@ decile_results_table <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# Loop through each decile and calculate the required statistics
 for (decile in 1:10) {
   
-  condition <- treated_units$lag_share_decile == decile
-  filtered_df <- treated_units[condition, ]
+  condition <- charter_seda_math_dosage$lag_share_decile == decile
+  filtered_df <- charter_seda_math_dosage[condition, ]
   
   gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
   gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
@@ -904,18 +927,19 @@ for (decile in 1:10) {
   decile_results_table <- rbind(decile_results_table, new_row)
 }
 
-# Create the bar graph using ggplot2
-plot <- ggplot(decile_results_table, 
-               aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+# Step 5: Plot the bar graph
+plot <- ggplot(decile_results_table, aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Treatment Dosage Decile", y = "GATE", 
-       title = "GATE within Different Deciles of Lag Share (Math Scores)") +
+  labs(x = "Lag Share Decile Threshold", y = "GATE", 
+       title = "GATE within Different Deciles of Lag Share (MATH)") +
   theme_minimal()
 
 # Save the plot
-ggsave(filename = file.path(output_path, "figures/gate_deciles_math.png"), plot = plot, 
+ggsave(filename = file.path(output_path, "figures/gate_deciles_math.png"), 
+       plot = plot, 
        width = 8, height = 6, dpi = 300)
+
 
 
 # Estimate the Causal Forest on test score data (ELA) ------------------------
@@ -1295,16 +1319,29 @@ kable(state_results_table,
 
 # GATE bar graph at different dosage levels (ELA) -----------------------
 
-# Filter the data to include only treated units (lag_share > 0)
-treated_units <- charter_seda_ela %>% filter(lag_share > 0)
+# Step 1: Calculate the treatment_dose_change variable and create a new column for the lag of lag_share
+charter_seda_ela_dosage <- charter_seda_ela %>%
+  group_by(district) %>%
+  arrange(district, stateyear) %>%
+  mutate(
+    lag_lag_share = Hmisc::Lag(lag_share),
+    treatment_dose_change = lag_share - lag_lag_share
+  ) %>%
+  ungroup()
 
-# Calculate deciles of lag_share among treated units
-treated_units$lag_share_decile <- ntile(treated_units$lag_share, 10)
+# Step 2: Filter the data to include only units where treatment_dose_change is non-zero
+charter_seda_ela_dosage <- charter_seda_ela_dosage %>%
+  filter(treatment_dose_change != 0)
+
+# Step 3: Group into deciles based on the lag of lag_share
+charter_seda_ela_dosage <- charter_seda_ela_dosage %>%
+  mutate(lag_share_decile = ntile(lag_lag_share, 10))
 
 # Calculate decile thresholds
-decile_thresholds <- quantile(treated_units$lag_share, probs = seq(0, 1, 0.1), na.rm = TRUE)
+decile_thresholds <- quantile(charter_seda_ela_dosage$lag_lag_share, 
+                              probs = seq(0, 1, 0.1), na.rm = TRUE)
 
-# Initialize the table to store results
+# Step 4: Estimate GATEs by average CATE predictions from the current year
 decile_results_table <- data.frame(
   Decile = integer(),
   GATE = numeric(),
@@ -1313,11 +1350,10 @@ decile_results_table <- data.frame(
   stringsAsFactors = FALSE
 )
 
-# Loop through each decile and calculate the required statistics
 for (decile in 1:10) {
   
-  condition <- treated_units$lag_share_decile == decile
-  filtered_df <- treated_units[condition, ]
+  condition <- charter_seda_ela_dosage$lag_share_decile == decile
+  filtered_df <- charter_seda_ela_dosage[condition, ]
   
   gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
   gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
@@ -1336,17 +1372,17 @@ for (decile in 1:10) {
   decile_results_table <- rbind(decile_results_table, new_row)
 }
 
-# Create the bar graph using ggplot2
-plot <- ggplot(decile_results_table, 
-               aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+# Step 5: Plot the bar graph
+plot <- ggplot(decile_results_table, aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Treatment Dosage Decile", y = "GATE", 
-       title = "GATE within Different Deciles of Lag Share (ELA Scores)") +
+  labs(x = "Lag Share Decile Threshold", y = "GATE", 
+       title = "GATE within Different Deciles of Lag Share (ELA)") +
   theme_minimal()
 
 # Save the plot
-ggsave(filename = file.path(output_path, "figures/gate_deciles_ela.png"), plot = plot, 
+ggsave(filename = file.path(output_path, "figures/gate_deciles_ela.png"), 
+       plot = plot, 
        width = 8, height = 6, dpi = 300)
 
 
