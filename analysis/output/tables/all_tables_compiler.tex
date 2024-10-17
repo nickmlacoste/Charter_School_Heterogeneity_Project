@@ -98,6 +98,26 @@ Table 4: Best linear projection $\tau(X) = \alpha + \beta X + e$\\
 \end{figure}
 
 
+	The next figure aims to map heterogeneity across dosage responses. There are 2 relevant aspects to the dose-response function with continuous treatment:
+\begin{itemize}
+	\item The average causal response at different starting doses: $E[Y(d') - Y(d) | X]$
+	\item The level treatment effect function: $E[Y(d) - Y(0) | X]$
+\end{itemize}
+	We can approximately map the average causal response function by grouping units treated in a given period $t$ according to their 1-period lagged dose (i.e. group by $Y(d)_{t-1}$). We group districts by deciles of this value, then compute GATEs within deciles, effectively estimating $E[Y(d')_t - Y(d)_{t-1}]$. We can approximately map the level treatment effect by grouping districts on their observed dose in period $t$, conditional that their period $t$ dose is non-0 and their lagged dose is 0. This allows us to estimate $E[Y(d)_t - Y(0)_{t-1}]$. 
+
+Figure \ref{fig:treat_dist_district_afgr} plots the distribution of treatment effects aggregated to the district level for graduation rates.
+
+\begin{figure}[!h]
+\centering
+\includegraphics[width=\textwidth]{c:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output/figures/cate_dist_district_afgr.png}
+\caption{Distribution of District-Level Treatment Effects: Graduation Rates}
+\label{fig:treat_dist_district_afgr}
+\begin{minipage}{1\linewidth}
+\singlespacing
+\footnotesize
+\emph{Notes}: Figure 3 plots VIF scores for Math -- the share of total trees which use a given baseline covariate to perform splitting, weighted by the depth at which the split occurred so that earlier splits within a tree count for slightly more.  
+\end{minipage}
+\end{figure}
 
 
 	\section{Math Test Scores}

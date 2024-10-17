@@ -193,7 +193,7 @@ plot <- ggplot(afgr_cates, aes(x = predictions, fill = as.factor(significant))) 
   labs(title = "Distribution of Estimated Treatment Effects", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-2.5, 2.5) +  
+  xlim(-1, 1) +  
   geom_vline(aes(xintercept = afgr_ate[1]), color = "red", linetype = "dashed", size = 1) + 
   geom_text(aes(x = afgr_ate[1], y = 20000, label = paste("ATE =", round(afgr_ate[1], 2))), 
             vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
@@ -243,6 +243,39 @@ print(summary_table,
       file = file.path(output_path, "/tables/cov_means_table_afgr.tex"),
       include.rownames = TRUE,
       floating = FALSE)
+
+# District-level treatment effect distribution -----------------------
+
+# aggregate treatment effects to district level
+district_cates <- charter_afgr2_clean %>%
+  group_by(district) %>%
+  summarize(
+    mean_prediction = mean(predictions, na.rm = TRUE),
+    mean_variance = mean(variance.estimates, na.rm = TRUE),
+    dr_score = mean(dr_score, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(mean_prediction / sqrt(mean_variance)))),
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+# Create the distribution plot of district-level treatment effects
+plot <- ggplot(district_cates, aes(x = mean_prediction, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  
+  labs(title = "Distribution of District-Level Estimated Treatment Effects", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-0.25, 0.5) +  
+  geom_vline(aes(xintercept = afgr_ate[1]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = afgr_ate[1], y = 750, label = paste("ATE =", round(afgr_ate[1], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "figures/cate_dist_district_afgr.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
 
 
 # Group Average Treatment Effect Table --------------------
@@ -373,7 +406,7 @@ kable(state_results_table,
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   save_kable(file = file.path(output_path, "tables/state_gates_table_afgr.tex"))
 
-# GATE bar graph at treatment dosage levels -----------------
+# GATE bar graph at different dosage levels (MATH) -----------------------
 
 # Filter the data to include only treated units (lag_share > 0)
 treated_units <- charter_afgr2_clean %>% filter(lag_share > 0)
@@ -417,7 +450,8 @@ for (decile in 1:10) {
 }
 
 # Create the bar graph using ggplot2
-plot <- ggplot(decile_results_table, aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+plot <- ggplot(decile_results_table, 
+               aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
   labs(x = "Treatment Dosage Decile", y = "GATE", 
@@ -616,7 +650,7 @@ plot <- ggplot(math_cates, aes(x = predictions, fill = as.factor(significant))) 
   labs(title = "Distribution of Estimated Treatment Effects - Math", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-4, 4) +  
+  xlim(-2, 2) +  
   geom_vline(aes(xintercept = math_ate[1]), color = "red", linetype = "dashed", size = 1) + 
   geom_text(aes(x = math_ate[1], y = 20000, label = paste("ATE =", round(math_ate[1], 2))), 
             vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
@@ -665,6 +699,39 @@ print(summary_table,
       file = file.path(output_path, "/tables/cov_means_table_math.tex"),
       include.rownames = TRUE,
       floating = FALSE)
+
+# District-level treatment effect distribution (Math) -----------------------
+
+# aggregate treatment effects to district level
+district_cates <- charter_seda_math %>%
+  group_by(district) %>%
+  summarize(
+    mean_prediction = mean(predictions, na.rm = TRUE),
+    mean_variance = mean(variance.estimates, na.rm = TRUE),
+    dr_score = mean(dr_score, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(mean_prediction / sqrt(mean_variance)))),
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+# Create the distribution plot of district-level treatment effects
+plot <- ggplot(district_cates, aes(x = mean_prediction, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  
+  labs(title = "Distribution of District-Level Estimated Treatment Effects", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-0.5, 0.5) +  
+  geom_vline(aes(xintercept = math_ate[1]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = afgr_ate[1], y = 750, label = paste("ATE =", round(math_ate[1], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "figures/cate_dist_district_math.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
 
 
 # Group Average Treatment Effect Table --------------------
@@ -1014,7 +1081,7 @@ plot <- ggplot(ela_cates, aes(x = predictions, fill = as.factor(significant))) +
   labs(title = "Distribution of Estimated Treatment Effects - ELA", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-2.5, 2.5) +  
+  xlim(-1.5, 1.5) +  
   geom_vline(aes(xintercept = ela_ate[1]), color = "red", linetype = "dashed", size = 1) + 
   geom_text(aes(x = ela_ate[1], y = 20000, label = paste("ATE =", round(ela_ate[1], 2))), 
             vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
@@ -1064,6 +1131,39 @@ print(summary_table,
       include.rownames = TRUE,
       floating = FALSE)
 
+
+# District-level treatment effect distribution (ELA) -----------------------
+
+# aggregate treatment effects to district level
+district_cates <- charter_seda_ela %>%
+  group_by(district) %>%
+  summarize(
+    mean_prediction = mean(predictions, na.rm = TRUE),
+    mean_variance = mean(variance.estimates, na.rm = TRUE),
+    dr_score = mean(dr_score, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(mean_prediction / sqrt(mean_variance)))),
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+# Create the distribution plot of district-level treatment effects
+plot <- ggplot(district_cates, aes(x = mean_prediction, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  
+  labs(title = "Distribution of District-Level Estimated Treatment Effects", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-0.5, 0.5) +  
+  geom_vline(aes(xintercept = ela_ate[1]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = afgr_ate[1], y = 750, label = paste("ATE =", round(ela_ate[1], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "figures/cate_dist_district_ela.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
 
 # Group Average Treatment Effect Table --------------------
 
