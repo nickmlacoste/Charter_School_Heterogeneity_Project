@@ -85,11 +85,281 @@ plot <- ggplot(charter_seda_ela, aes(x = predictions, fill = as.factor(significa
 ggsave(filename = file.path(output_path, "/figures/cate_dist_ela.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
+# Distribution of treatment effects plots (district-level aggregated) -----------------------
+
+# aggregate treatment effects to district level
+district_cates_afgr <- charter_afgr2 %>%
+  group_by(district) %>%
+  summarize(
+    mean_prediction = mean(predictions, na.rm = TRUE),
+    mean_variance = mean(variance.estimates, na.rm = TRUE),
+    dr_score = mean(dr_score, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(mean_prediction / sqrt(mean_variance)))),
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+district_cates_math <- charter_seda_math %>%
+  group_by(district) %>%
+  summarize(
+    mean_prediction = mean(predictions, na.rm = TRUE),
+    mean_variance = mean(variance.estimates, na.rm = TRUE),
+    dr_score = mean(dr_score, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(mean_prediction / sqrt(mean_variance)))),
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+district_cates_ela <- charter_seda_ela %>%
+  group_by(district) %>%
+  summarize(
+    mean_prediction = mean(predictions, na.rm = TRUE),
+    mean_variance = mean(variance.estimates, na.rm = TRUE),
+    dr_score = mean(dr_score, na.rm = TRUE)
+  ) %>%
+  mutate(
+    p_value = 2 * (1 - pnorm(abs(mean_prediction / sqrt(mean_variance)))),
+    significant = if_else(p_value <= 0.1, 1, 0)
+  )
+
+# Graduation Rates:
+plot <- ggplot(district_cates_afgr, aes(x = mean_prediction, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  
+  labs(title = "Distribution of District-Level Estimated Treatment Effects", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-0.25, 0.5) +  
+  geom_vline(aes(xintercept = ATEs$ATE[1]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = ATEs$ATE[1], y = 600, label = paste("ATE =", round(ATEs$ATE[1], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "figures/cate_dist_district_afgr.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# Math Scores:
+plot <- ggplot(district_cates_math, aes(x = mean_prediction, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  
+  labs(title = "Distribution of District-Level Estimated Treatment Effects", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-0.5, 0.5) +  
+  geom_vline(aes(xintercept = ATEs$ATE[2]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = ATEs$ATE[2], y = 300, label = paste("ATE =", round(ATEs$ATE[2], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "figures/cate_dist_district_math.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# ELA Scores:
+plot <- ggplot(district_cates_ela, aes(x = mean_prediction, fill = as.factor(significant))) +
+  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
+                    name = "P-Value <= 0.1") +  
+  labs(title = "Distribution of District-Level Estimated Treatment Effects", 
+       x = "Treatment Effect", 
+       y = "Frequency") +
+  xlim(-0.5, 0.5) +  
+  geom_vline(aes(xintercept = ATEs$ATE[3]), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = ATEs$ATE[3], y = 300, label = paste("ATE =", round(ATEs$ATE[3], 2))), 
+            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
+  theme_minimal()
+
+ggsave(filename = file.path(output_path, "figures/cate_dist_district_ela.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
 
 
+# Covariate averages for significantly positive vs. negative districts: ---------------------
+
+X_covariates_afgr <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
+                       "perspeced", "urban", "suburb", "town", "rural", 
+                       "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
+                       "L.afgr")
+
+X_covariates_math <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
+                       "perspeced", "urban", "suburb", "town", "rural", 
+                       "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
+                       "L.st_math")
+X_covariates_ela <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
+                       "perspeced", "urban", "suburb", "town", "rural", 
+                       "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
+                       "L.st_ela")
+
+covariate_names_afgr <- c(
+  logenroll = "Log of Enrollment",
+  perwht = "Percent White",
+  perblk = "Percent Black",
+  perhsp = "Percent Hispanic",
+  perfrl = "Percent Free/Reduced Lunch",
+  perspeced = "Percent Special Ed",
+  urban = "Urban",
+  suburb = "Suburb",
+  town = "Town",
+  rural = "Rural",
+  p_rev = "Per Pupil Revenue",
+  p_exp = "Per Pupil Expenditure",
+  str = "Student-Teacher Ratio",
+  tea_salary = "Teacher Salary",
+  num_magnet = "Number of Magnet Schools",
+  charter_eff = "Charter Effectiveness",
+  L.afgr = "Baseline Performance"
+)
+
+covariate_names_math <- c(
+  logenroll = "Log of Enrollment",
+  perwht = "Percent White",
+  perblk = "Percent Black",
+  perhsp = "Percent Hispanic",
+  perfrl = "Percent Free/Reduced Lunch",
+  perspeced = "Percent Special Ed",
+  urban = "Urban",
+  suburb = "Suburb",
+  town = "Town",
+  rural = "Rural",
+  p_rev = "Per Pupil Revenue",
+  p_exp = "Per Pupil Expenditure",
+  str = "Student-Teacher Ratio",
+  tea_salary = "Teacher Salary",
+  num_magnet = "Number of Magnet Schools",
+  charter_eff = "Charter Effectiveness",
+  L.st_math = "Baseline Performance"
+)
+
+covariate_names_ela <- c(
+  logenroll = "Log of Enrollment",
+  perwht = "Percent White",
+  perblk = "Percent Black",
+  perhsp = "Percent Hispanic",
+  perfrl = "Percent Free/Reduced Lunch",
+  perspeced = "Percent Special Ed",
+  urban = "Urban",
+  suburb = "Suburb",
+  town = "Town",
+  rural = "Rural",
+  p_rev = "Per Pupil Revenue",
+  p_exp = "Per Pupil Expenditure",
+  str = "Student-Teacher Ratio",
+  tea_salary = "Teacher Salary",
+  num_magnet = "Number of Magnet Schools",
+  charter_eff = "Charter Effectiveness",
+  L.st_ela = "Baseline Performance"
+)
+
+# Graduation rates:
+negative_effects_afgr <- charter_afgr2 %>%
+  filter(predictions < 0 & significant == 1)
+
+positive_effects_afgr <- charter_afgr2 %>%
+  filter(predictions > 0 & significant == 1)
+
+negative_means_afgr <- negative_effects_afgr %>%
+  summarise(across(all_of(X_covariates_afgr), mean, na.rm = TRUE))
+
+positive_means_afgr <- positive_effects_afgr %>%
+  summarise(across(all_of(X_covariates_afgr), mean, na.rm = TRUE))
+
+difference_afgr <- positive_means_afgr - negative_means_afgr
+
+n_positive_afgr <- nrow(positive_effects_afgr)
+n_negative_afgr <- nrow(negative_effects_afgr)
+
+summary_table <- bind_cols(
+  Covariate = covariate_names_afgr, 
+  `Significantly Positive` = as.numeric(positive_means_afgr),
+  `Significantly Negative` = as.numeric(negative_means_afgr),
+  `Difference (Positive - Negative)` = as.numeric(difference_afgr)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `Significantly Positive` = n_positive_afgr, 
+          `Significantly Negative` = n_negative_afgr, 
+          `Difference (Positive - Negative)` = n_positive_afgr + n_negative_afgr)
+
+summary_table <- xtable(summary_table)
+print(summary_table,
+      file = file.path(output_path, "/tables/cov_means_table_afgr.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+# Math Scores:
+negative_effects_math <- charter_seda_math %>%
+  filter(predictions < 0 & significant == 1)
+
+positive_effects_math <- charter_seda_math %>%
+  filter(predictions > 0 & significant == 1)
+
+negative_means_math <- negative_effects_math %>%
+  summarise(across(all_of(X_covariates_math), mean, na.rm = TRUE))
+
+positive_means_math <- positive_effects_math %>%
+  summarise(across(all_of(X_covariates_math), mean, na.rm = TRUE))
+
+difference_math <- positive_means_math - negative_means_math
+
+n_positive_math <- nrow(positive_effects_math)
+n_negative_math <- nrow(negative_effects_math)
+
+summary_table <- bind_cols(
+  Covariate = covariate_names_math, 
+  `Significantly Positive` = as.numeric(positive_means_math),
+  `Significantly Negative` = as.numeric(negative_means_math),
+  `Difference (Positive - Negative)` = as.numeric(difference_math)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `Significantly Positive` = n_positive_math, 
+          `Significantly Negative` = n_negative_math, 
+          `Difference (Positive - Negative)` = n_positive_math + n_negative_math)
+
+summary_table <- xtable(summary_table)
+print(summary_table,
+      file = file.path(output_path, "/tables/cov_means_table_math.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
 
 
+# ELA Scores:
+negative_effects_ela <- charter_seda_ela %>%
+  filter(predictions < 0 & significant == 1)
 
+positive_effects_ela <- charter_seda_ela %>%
+  filter(predictions > 0 & significant == 1)
+
+negative_means_ela <- negative_effects_ela %>%
+  summarise(across(all_of(X_covariates_ela), mean, na.rm = TRUE))
+
+positive_means_ela <- positive_effects_ela %>%
+  summarise(across(all_of(X_covariates_ela), mean, na.rm = TRUE))
+
+difference_ela <- positive_means_ela - negative_means_ela
+
+n_positive_ela <- nrow(positive_effects_ela)
+n_negative_ela <- nrow(negative_effects_ela)
+
+summary_table <- bind_cols(
+  Covariate = covariate_names_ela, 
+  `Significantly Positive` = as.numeric(positive_means_ela),
+  `Significantly Negative` = as.numeric(negative_means_ela),
+  `Difference (Positive - Negative)` = as.numeric(difference_ela)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `Significantly Positive` = n_positive_ela, 
+          `Significantly Negative` = n_negative_ela, 
+          `Difference (Positive - Negative)` = n_positive_ela + n_negative_ela)
+
+summary_table <- xtable(summary_table)
+print(summary_table,
+      file = file.path(output_path, "/tables/cov_means_table_ela.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
 
 
 
