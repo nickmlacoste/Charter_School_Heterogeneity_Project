@@ -26,11 +26,22 @@ cf_output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulan
 #charter_afgr2 <- read_dta(file.path(data_path, "charter_afgr2.dta"))
 charter_afgr2 <- read_dta(file.path(data_path, "charter_afgr2_c.dta")) #this one is fully cleaned
 
+# Create any derived variables needed for estimation -----------------------
+
+charter_afgr2 <- charter_afgr2 %>%
+  arrange(district, year) %>%  
+  group_by(district) %>%       
+  mutate(L.afgr = Hmisc::Lag(afgr, 1)) %>%  # Create variable for 1-period lag of graduation rates
+  ungroup()
+
+
+
 # Estimate Causal Forest on graduation rate data -------------------------
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff")
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
+                  "L.afgr")
 
 # remove rows with missing data for Y or W
 charter_afgr2_clean <- charter_afgr2 %>%
@@ -190,7 +201,7 @@ plot <- ggplot(afgr_cates, aes(x = predictions, fill = as.factor(significant))) 
   geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
   scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
                     name = "P-Value <= 0.1") +  
-  labs(title = "Distribution of Estimated Treatment Effects", 
+  labs(title = "Distribution of Estimated Treatment Effects -- Graduation Rates", 
        x = "Treatment Effect", 
        y = "Frequency") +
   xlim(-1, 1) +  
@@ -497,11 +508,21 @@ cf_output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulan
 #charter_seda <- read_dta(file.path(data_path, "charter_seda.dta"))
 charter_seda <- read_dta(file.path(data_path, "charter_seda_c.dta")) #this one is fully cleaned
 
+# Create any derived columns needed for estimation ------------------------
+
+charter_seda <- charter_seda %>%
+  arrange(district, year) %>%  
+  group_by(district) %>%       
+  mutate(L.st_math = Hmisc::Lag(st_math, 1),
+         L.st_ela = Hmisc::Lag(st_ela, 1)) %>%  # Create variables for 1-period lags of math and ELA
+  ungroup()
+
 # Estimate Causal Forest on test score data (MATH) -------------------------
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff")
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
+                  "L.st_math")
 
 # remove rows with missing data for Y or W
 charter_seda_math <- charter_seda %>%
@@ -946,7 +967,8 @@ ggsave(filename = file.path(output_path, "figures/gate_deciles_math.png"),
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff")
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
+                  "L.st_ela")
 
 charter_seda_ela <- charter_seda %>%
   filter(!is.na(st_ela) & !is.na(inter))
