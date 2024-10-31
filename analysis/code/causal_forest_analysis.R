@@ -122,6 +122,17 @@ afgr_cates <- afgr_cates %>%
     dr_score = get_scores(cf_model)
   )
 
+charter_afgr2_clean <- charter_afgr2_clean %>%
+  mutate(index = row_number())
+afgr_cates <- afgr_cates %>%
+  mutate(index = row_number())
+charter_afgr2_clean <- left_join(charter_afgr2_clean, afgr_cates, by = "index")
+
+# save the graduation rates data with CATE predictions
+write.csv(charter_afgr2_clean, 
+          file = file.path(data_path, "afgr_post_ML.csv"), row.names = FALSE)
+
+
 # causal forest doubly-robust estimate of the average treatment effect:
 afgr_ate <- average_treatment_effect(cf_model)
 
@@ -195,31 +206,7 @@ print(blp_results,
       hline.after = c(-1, 0, nrow(blp_results))
       )
 
-# Distribution of treatment effects plot -------------------
-
-plot <- ggplot(afgr_cates, aes(x = predictions, fill = as.factor(significant))) +
-  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
-  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
-                    name = "P-Value <= 0.1") +  
-  labs(title = "Distribution of Estimated Treatment Effects -- Graduation Rates", 
-       x = "Treatment Effect", 
-       y = "Frequency") +
-  xlim(-1, 1) +  
-  geom_vline(aes(xintercept = afgr_ate[1]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = afgr_ate[1], y = 20000, label = paste("ATE =", round(afgr_ate[1], 2))), 
-            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
-  theme_minimal()
-
-ggsave(filename = file.path(output_path, "/figures/cate_dist_afgr.png"), plot = plot, 
-       width = 8, height = 6, dpi = 300)
-
-
 # covariate averages for significantly positive vs. negative districts: ---------------------
-charter_afgr2_clean <- charter_afgr2_clean %>%
-  mutate(index = row_number())
-afgr_cates <- afgr_cates %>%
-  mutate(index = row_number())
-charter_afgr2_clean <- left_join(charter_afgr2_clean, afgr_cates, by = "index")
 
 negative_effects <- charter_afgr2_clean %>%
   filter(predictions < 0 & significant == 1)
@@ -419,7 +406,10 @@ kable(state_results_table,
 
 # GATE bar graph at different dosage levels (grad rates) -----------------------
 
-# Step 1: Calculate the treatment_dose_change variable and create a new column for the lag of lag_share
+# Step 1: Define the custom threshold levels for `lag_lag_share`
+thresholds <- c(0.05, 0.1, 0.15, 0.2, 0.25, 0.3)
+
+# Step 2: Create a new column that groups `lag_lag_share` based on these thresholds
 charter_afgr2_dosage <- charter_afgr2_clean %>%
   group_by(district) %>%
   arrange(district, stateyear) %>%
@@ -427,33 +417,28 @@ charter_afgr2_dosage <- charter_afgr2_clean %>%
     lag_lag_share = Hmisc::Lag(lag_share),
     treatment_dose_change = lag_share - lag_lag_share
   ) %>%
-  ungroup()
+  ungroup() %>%
+  filter(treatment_dose_change != 0) %>%
+  mutate(
+    lag_share_group = cut(
+      lag_lag_share,
+      breaks = c(-Inf, thresholds, Inf),
+      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+    )
+  )
 
-# Step 2: Filter the data to include only units where treatment_dose_change is non-zero
-charter_afgr2_dosage <- charter_afgr2_dosage %>%
-  filter(treatment_dose_change != 0)
-
-# Step 3: Group into deciles based on the lag of lag_share
-charter_afgr2_dosage <- charter_afgr2_dosage %>%
-  mutate(lag_share_decile = ntile(lag_lag_share, 10))
-
-# Calculate decile thresholds
-decile_thresholds <- quantile(charter_afgr2_dosage$lag_lag_share, 
-                              probs = seq(0, 1, 0.1), na.rm = TRUE)
-
-# Step 4: Estimate GATEs by average CATE predictions from the current year
-decile_results_table <- data.frame(
-  Decile = integer(),
+# Step 3: Estimate GATEs by average CATE predictions for each threshold group
+group_results_table <- data.frame(
+  Group = character(),
   GATE = numeric(),
   SE = numeric(),
   `p-value` = numeric(),
   stringsAsFactors = FALSE
 )
 
-for (decile in 1:10) {
-  
-  condition <- charter_afgr2_dosage$lag_share_decile == decile
-  filtered_df <- charter_afgr2_dosage[condition, ]
+for (group in unique(charter_afgr2_dosage$lag_share_group)) {
+  filtered_df <- charter_afgr2_dosage %>%
+    filter(lag_share_group == group)
   
   gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
   gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
@@ -462,25 +447,25 @@ for (decile in 1:10) {
   p_value <- 2 * (1 - pnorm(abs(z_score)))
   
   new_row <- data.frame(
-    Decile = decile,
+    Group = as.character(group),
     GATE = gate_estimate,
     SE = gate_se,
     `p-value` = p_value,
     stringsAsFactors = FALSE
   )
   
-  decile_results_table <- rbind(decile_results_table, new_row)
+  group_results_table <- rbind(group_results_table, new_row)
 }
 
-# Step 5: Plot the bar graph
-plot <- ggplot(decile_results_table, aes(x = factor(Decile, labels = round(decile_thresholds[-1], 2)), y = GATE)) +
+# Step 4: Plot the bar graph
+plot <- ggplot(group_results_table, aes(x = Group, y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Lag Share Decile Threshold", y = "GATE", title = "GATE within Different Deciles of Lag Share") +
+  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
   theme_minimal()
 
 # Save the plot
-ggsave(filename = file.path(output_path, "figures/gate_deciles_afgr.png"), 
+ggsave(filename = file.path(output_path, "figures/gate_dosage_afgr.png"), 
        plot = plot, 
        width = 8, height = 6, dpi = 300)
 
@@ -490,7 +475,8 @@ ggsave(filename = file.path(output_path, "figures/gate_deciles_afgr.png"),
 ###########  Test Score results    ################
 ###########                        ################
 
-rm(list = ls())
+#clears the memory of prior results except for the ATE estimate
+rm(list = setdiff(ls(), "afgr_ate")) 
 
 library(tidyverse)
 library(haven)
@@ -602,6 +588,16 @@ math_cates <- math_cates %>%
     dr_score = get_scores(cf_model)
   )
 
+charter_seda_math <- charter_seda_math %>%
+  mutate(index = row_number())
+math_cates <- math_cates %>%
+  mutate(index = row_number())
+charter_seda_math <- left_join(charter_seda_math, math_cates, by = "index")
+
+write.csv(charter_seda_math, 
+          file = file.path(data_path, "math_post_ML.csv"), row.names = FALSE)
+
+
 # causal forest doubly-robust estimate of the average treatment effect:
 math_ate <- average_treatment_effect(cf_model,
                                      target.sample = "all",
@@ -673,30 +669,7 @@ print(blp_results,
       hline.after = c(-1, 0, nrow(blp_results))
 )
 
-# Distribution of treatment effects plot -------------------
-
-plot <- ggplot(math_cates, aes(x = predictions, fill = as.factor(significant))) +
-  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
-  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
-                    name = "P-Value <= 0.1") +  # Custom colors for 0 and 1
-  labs(title = "Distribution of Estimated Treatment Effects - Math", 
-       x = "Treatment Effect", 
-       y = "Frequency") +
-  xlim(-2, 2) +  
-  geom_vline(aes(xintercept = math_ate[1]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = math_ate[1], y = 20000, label = paste("ATE =", round(math_ate[1], 2))), 
-            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
-  theme_minimal()
-
-ggsave(filename = file.path(output_path, "/figures/cate_dist_math.png"), plot = plot, 
-       width = 8, height = 6, dpi = 300)
-
 # covariate averages for significantly positive vs. negative districts: ---------------------
-charter_seda_math <- charter_seda_math %>%
-  mutate(index = row_number())
-math_cates <- math_cates %>%
-  mutate(index = row_number())
-charter_seda_math <- left_join(charter_seda_math, math_cates, by = "index")
 
 negative_effects <- charter_seda_math %>%
   filter(predictions < 0 & significant == 1)
@@ -1047,10 +1020,29 @@ ela_cates <- ela_cates %>%
     dr_score = get_scores(cf_model)
   )
 
+charter_seda_ela <- charter_seda_ela %>%
+  mutate(index = row_number())
+ela_cates <- ela_cates %>%
+  mutate(index = row_number())
+charter_seda_ela <- left_join(charter_seda_ela, ela_cates, by = "index")
+
+write.csv(charter_seda_ela, 
+          file = file.path(data_path, "ela_post_ML.csv"), row.names = FALSE)
+
 # causal forest doubly-robust estimate of the average treatment effect:
 ela_ate <- average_treatment_effect(cf_model,
                                      target.sample = "all",
                                      method = "AIPW")
+
+# save the causal forest ATE estimates:
+cf_ATE_estimates <- data.frame(
+  model = c("afgr", "math", "ela"),
+  ATE = c(afgr_ate["estimate"], math_ate["estimate"], ela_ate["estimate"]),
+  SE = c(afgr_ate["std.err"], math_ate["std.err"], ela_ate["std.err"])
+)
+
+write.csv(cf_ATE_estimates, 
+          file = file.path(data_path, "cf_ATE_estimates.csv"), row.names = FALSE)
 
 # variable importance factors plot ----------------
 ela_vif <- variable_importance(cf_model)
@@ -1118,30 +1110,7 @@ print(blp_results,
       hline.after = c(-1, 0, nrow(blp_results))
 )
 
-# Distribution of treatment effects plot -------------------
-
-plot <- ggplot(ela_cates, aes(x = predictions, fill = as.factor(significant))) +
-  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
-  scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
-                    name = "P-Value <= 0.1") +  # Custom colors for 0 and 1
-  labs(title = "Distribution of Estimated Treatment Effects - ELA", 
-       x = "Treatment Effect", 
-       y = "Frequency") +
-  xlim(-1.5, 1.5) +  
-  geom_vline(aes(xintercept = ela_ate[1]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = ela_ate[1], y = 20000, label = paste("ATE =", round(ela_ate[1], 2))), 
-            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
-  theme_minimal()
-
-ggsave(filename = file.path(output_path, "/figures/cate_dist_ela.png"), plot = plot, 
-       width = 8, height = 6, dpi = 300)
-
 # covariate averages for significantly positive vs. negative districts: ---------------------
-charter_seda_ela <- charter_seda_ela %>%
-  mutate(index = row_number())
-ela_cates <- ela_cates %>%
-  mutate(index = row_number())
-charter_seda_ela <- left_join(charter_seda_ela, ela_cates, by = "index")
 
 negative_effects <- charter_seda_ela %>%
   filter(predictions < 0 & significant == 1)
