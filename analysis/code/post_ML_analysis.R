@@ -585,6 +585,214 @@ kable(state_results_table,
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   save_kable(file = file.path(output_path, "tables/state_gates_table.tex"))
 
+# GATE bar graph at different dosage levels (grad rates) -----------------------
+
+# Step 1: Define the custom threshold levels for `lag_lag_share`
+thresholds <- c(0.05, 0.1, 0.15, 0.2, 0.25, 0.3)
+
+# Step 2: Create a new column that groups `lag_lag_share` based on these thresholds
+
+# Graduation Rates
+charter_afgr2_dosage <- charter_afgr2 %>%
+  group_by(district) %>%
+  arrange(district, stateyear) %>%
+  mutate(
+    lag_lag_share = Hmisc::Lag(lag_share),
+    treatment_dose_change = lag_share - lag_lag_share
+  ) %>%
+  ungroup() %>%
+  filter(treatment_dose_change != 0) %>%
+  mutate(
+    lag_share_group = cut(
+      lag_lag_share,
+      breaks = c(-Inf, thresholds, Inf),
+      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+    )
+  )
+
+# Math Scores
+charter_seda_math_dosage <- charter_seda_math %>%
+  group_by(district) %>%
+  arrange(district, sgyear) %>%
+  mutate(
+    lag_lag_grade = Hmisc::Lag(lag_grade),
+    treatment_dose_change = lag_grade - lag_lag_grade
+  ) %>%
+  ungroup() %>%
+  filter(treatment_dose_change != 0) %>%
+  mutate(
+    lag_grade_group = cut(
+      lag_lag_grade,
+      breaks = c(-Inf, thresholds, Inf),
+      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+    )
+  )
+
+# ELA Scores
+charter_seda_ela_dosage <- charter_seda_ela %>%
+  group_by(district) %>%
+  arrange(district, sgyear) %>%
+  mutate(
+    lag_lag_grade = Hmisc::Lag(lag_grade),
+    treatment_dose_change = lag_grade - lag_lag_grade
+  ) %>%
+  ungroup() %>%
+  filter(treatment_dose_change != 0) %>%
+  mutate(
+    lag_grade_group = cut(
+      lag_lag_grade,
+      breaks = c(-Inf, thresholds, Inf),
+      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+    )
+  )
+
+# Step 3: Estimate GATEs by average CATE predictions for each threshold group
+
+group_results_table_afgr <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+group_results_table_math <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+group_results_table_ela <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+#Graduation rates
+for (group in unique(charter_afgr2_dosage$lag_share_group)) {
+  filtered_df <- charter_afgr2_dosage %>%
+    filter(lag_share_group == group)
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  new_row <- data.frame(
+    Group = as.character(group),
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    stringsAsFactors = FALSE
+  )
+  
+  group_results_table_afgr <- rbind(group_results_table_afgr, new_row)
+}
+
+# Math scores
+for (group in unique(charter_seda_math_dosage$lag_grade_group)) {
+  group_char <- as.character(group)
+  filtered_df <- charter_seda_math_dosage %>%
+    filter(lag_grade_group == group_char)
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  new_row <- data.frame(
+    Group = as.character(group),
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    stringsAsFactors = FALSE
+  )
+  
+  group_results_table_math <- rbind(group_results_table_math, new_row)
+}
+
+# ELA scores
+for (group in unique(charter_seda_ela_dosage$lag_grade_group)) {
+  group_char <- as.character(group)
+  filtered_df <- charter_seda_ela_dosage %>%
+    filter(lag_grade_group == group_char)
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  new_row <- data.frame(
+    Group = as.character(group),
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    stringsAsFactors = FALSE
+  )
+  
+  group_results_table_ela <- rbind(group_results_table_ela, new_row)
+}
+
+# ensure the groups are in ascending order
+group_results_table_afgr$Group <- factor(group_results_table_afgr$Group, levels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%"))
+group_results_table_math$Group <- factor(group_results_table_math$Group, levels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%"))
+group_results_table_ela$Group <- factor(group_results_table_ela$Group, levels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%"))
+
+
+# Step 4: Plot the bar graphs
+
+# Graduation rates
+plot <- ggplot(group_results_table_afgr, aes(x = Group, y = GATE)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
+  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 14)  # Increase x-axis label size
+  )
+
+# Save the plot
+ggsave(filename = file.path(output_path, "figures/gate_dosage_afgr.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# Math scores
+plot <- ggplot(group_results_table_math, aes(x = Group, y = GATE)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
+  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 14)  # Increase x-axis label size
+  )
+
+# Save the plot
+ggsave(filename = file.path(output_path, "figures/gate_dosage_math.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
+# ELA scores
+plot <- ggplot(group_results_table_math, aes(x = Group, y = GATE)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
+  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(size = 14)  # Increase x-axis label size
+  )
+
+# Save the plot
+ggsave(filename = file.path(output_path, "figures/gate_dosage_ela.png"), 
+       plot = plot, 
+       width = 8, height = 6, dpi = 300)
+
 
 
 
