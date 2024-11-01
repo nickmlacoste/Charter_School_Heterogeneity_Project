@@ -286,19 +286,24 @@ significance_stars <- ifelse(p_values < 0.01, "***",
 
 summary_table <- bind_cols(
   Covariate = covariate_names_afgr, 
-  `Significantly \n Positive` = round(as.numeric(positive_means_afgr), 2),
-  `Significantly \n Negative` = round(as.numeric(negative_means_afgr), 2),
-  `Difference \n (Positive - Negative)` = paste0(difference_afgr, significance_stars)
+  `Significantly Positive` = round(as.numeric(positive_means_afgr), 2),
+  `Significantly Negative` = round(as.numeric(negative_means_afgr), 2),
+  `Difference (Positive - Negative)` = paste0(difference_afgr, significance_stars)
 ) %>% 
   add_row(Covariate = "Number of Observations", 
-          `Significantly \n Positive` = n_positive_afgr, 
-          `Significantly \n Negative` = n_negative_afgr, 
-          `Difference \n (Positive - Negative)` = as.character(n_positive_afgr + n_negative_afgr))
+          `Significantly Positive` = n_positive_afgr, 
+          `Significantly Negative` = n_negative_afgr, 
+          `Difference (Positive - Negative)` = as.character(n_positive_afgr + n_negative_afgr))
 
 kable(summary_table, 
       caption = "Comparing Covariate Means: Graduation Rates",
       format = "latex", booktabs = TRUE, 
-      linesep = "", escape = FALSE, label = "cov_means_afgr") %>%
+      linesep = "", escape = FALSE, label = "cov_means_afgr",
+      align = "lccc",
+      col.names = linebreak(c("Covariate",
+                              "Significantly\nPositive", 
+                              "Significantly\nNegative",
+                              "Difference\n(Positive - Negative)"), align = "c")) %>%
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
   save_kable(file = file.path(output_path, "tables/cov_means_table_afgr.tex"))
@@ -346,7 +351,12 @@ summary_table <- bind_cols(
 kable(summary_table, 
       caption = "Comparing Covariate Means: Math",
       format = "latex", booktabs = TRUE, 
-      linesep = "", escape = FALSE, label = "cov_means_math") %>%
+      linesep = "", escape = FALSE, label = "cov_means_math",
+      align = "lccc",
+      col.names = linebreak(c("Covariate",
+                              "Significantly\nPositive", 
+                              "Significantly\nNegative",
+                              "Difference\n(Positive - Negative)"), align = "c")) %>%
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
   save_kable(file = file.path(output_path, "tables/cov_means_table_math.tex"))
@@ -396,7 +406,12 @@ summary_table <- bind_cols(
 kable(summary_table, 
       caption = "Comparing Covariate Means: ELA",
       format = "latex", booktabs = TRUE, 
-      linesep = "", escape = FALSE, label = "cov_means_ela") %>%
+      linesep = "", escape = FALSE, label = "cov_means_ela",
+      align = "lccc",
+      col.names = linebreak(c("Covariate",
+                              "Significantly\nPositive", 
+                              "Significantly\nNegative",
+                              "Difference\n(Positive - Negative)"), align = "c")) %>%
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
   save_kable(file = file.path(output_path, "tables/cov_means_table_ela.tex"))
@@ -404,156 +419,94 @@ kable(summary_table,
 
 # Group Average Treatment Effect Tables --------------------
 
-# GATEs: Graduation Rates
+calculate_gate_subgroups <- function(dataset, subgroup_conditions, dr_score_column) {
+  results <- data.frame(
+    Group = character(),
+    GATE = character(),
+    SE = numeric(),
+    `Share of N` = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (group_name in names(subgroup_conditions)) {
+    condition <- subgroup_conditions[[group_name]]
+    filtered_df <- dataset[condition, ]
+    
+    gate_estimate <- mean(filtered_df[[dr_score_column]], na.rm = TRUE)
+    gate_se <- sd(filtered_df[[dr_score_column]], na.rm = TRUE) / sqrt(nrow(filtered_df))
+    
+    z_score <- gate_estimate / gate_se
+    p_value <- 2 * (1 - pnorm(abs(z_score)))
+    
+    # Determine significance stars
+    stars <- ifelse(p_value < 0.01, "***",
+                    ifelse(p_value < 0.05, "**",
+                           ifelse(p_value < 0.1, "*", "")))
+    
+    # GATE with stars
+    gate_with_stars <- paste0(round(gate_estimate, 3), stars)
+    
+    proportion_N <- mean(condition)
+    
+    # Append to results
+    results <- rbind(results, data.frame(
+      Group = group_name,
+      GATE = gate_with_stars,
+      SE = round(gate_se, 3),
+      `Share of N` = round(proportion_N, 3),
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  return(results)
+}
+
+# Define subgroup conditions
 subgroup_conditions <- list(
   "Urban" = charter_afgr2[,"urban"] == 1,
   "Suburban" = charter_afgr2[,"suburb"] == 1,
   "Rural" = charter_afgr2[,"rural"] == 1,
-  "Percent Free Lunch > 20%" = charter_afgr2[,"perfrl"] > 0.20
+  "Percent Free Lunch $>$ 20\\%" = charter_afgr2[,"perfrl"] > 0.20
 )
 
-# initializes the table to store results
-gate_results_table <- data.frame(
-  Group = character(),
-  GATE = numeric(),
-  SE = numeric(),
-  `p-value` = numeric(),
-  `% N` = numeric(),
-  stringsAsFactors = FALSE
-)
+# Calculate GATEs for each dataset
+gate_afgr <- calculate_gate_subgroups(charter_afgr2, subgroup_conditions, "dr_score") %>%
+  rename(`Grad Rate` = GATE, `Grad Rate SE` = SE, `Grad Rate Share` = `Share.of.N`)
+gate_math <- calculate_gate_subgroups(charter_seda_math, subgroup_conditions, "dr_score") %>%
+  rename(`Math` = GATE, `Math SE` = SE, `Math Share` = `Share.of.N`)
+gate_ela <- calculate_gate_subgroups(charter_seda_ela, subgroup_conditions, "dr_score") %>%
+  rename(`ELA` = GATE, `ELA SE` = SE, `ELA Share` = `Share.of.N`)
 
-for (group_name in names(subgroup_conditions)) {
-  
-  condition <- subgroup_conditions[[group_name]]
-  
-  filtered_df <- charter_afgr2[condition, ]
-  
-  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
-  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
-  
-  z_score <- gate_estimate / gate_se
-  p_value <- 2 * (1 - pnorm(abs(z_score)))
-  
-  proportion_N <- mean(condition)
-  
-  new_row <- data.frame(
-    Group = group_name,
-    GATE = gate_estimate,
-    SE = gate_se,
-    `p-value` = p_value,
-    `Share of N` = proportion_N,
-    stringsAsFactors = FALSE
+# Merge results by Group
+combined_gate_results <- gate_afgr %>%
+  left_join(gate_math, by = "Group") %>%
+  left_join(gate_ela, by = "Group") %>%
+  select(
+    Group,
+    `Grad Rate`, `Grad Rate SE`,
+    `Math`, `Math SE`,
+    `ELA`, `ELA SE`,
+    `Grad Rate Share`, `Math Share`, `ELA Share`
   )
-  
-  gate_results_table <- rbind(gate_results_table, new_row)
-}
 
-gate_results_table <- xtable(gate_results_table)
-print(gate_results_table,
-      file = file.path(output_path, "/tables/gates_table_afgr.tex"),
-      include.rownames = TRUE,
-      floating = FALSE)
+# Combine GATE estimates and SEs into a single column for each outcome
+combined_gate_results <- combined_gate_results %>%
+  mutate(
+    `Grad Rate` = glue::glue("\\shortstack{{{`Grad Rate`} \\\\ ({`Grad Rate SE`})}}"),
+    `Math` = glue::glue("\\shortstack{{{`Math`} \\\\ ({`Math SE`})}}"),
+    `ELA` = glue::glue("\\shortstack{{{`ELA`} \\\\ ({`ELA SE`})}}")
+  ) %>%
+  select(-`Grad Rate SE`, -`Math SE`, -`ELA SE`)
 
-# GATEs: Math Scores
-subgroup_conditions <- list(
-  "Urban" = charter_seda_math[,"urban"] == 1,
-  "Suburban" = charter_seda_math[,"suburb"] == 1,
-  "Rural" = charter_seda_math[,"rural"] == 1,
-  "Percent Free Lunch > 20%" = charter_seda_math[,"perfrl"] > 0.20
-)
-
-# initializes the table to store results
-gate_results_table <- data.frame(
-  Group = character(),
-  GATE = numeric(),
-  SE = numeric(),
-  `p-value` = numeric(),
-  `% N` = numeric(),
-  stringsAsFactors = FALSE
-)
-
-for (group_name in names(subgroup_conditions)) {
-  
-  condition <- subgroup_conditions[[group_name]]
-  
-  filtered_df <- charter_seda_math[condition, ]
-  
-  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
-  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
-  
-  z_score <- gate_estimate / gate_se
-  p_value <- 2 * (1 - pnorm(abs(z_score)))
-  
-  proportion_N <- mean(condition)
-  
-  new_row <- data.frame(
-    Group = group_name,
-    GATE = gate_estimate,
-    SE = gate_se,
-    `p-value` = p_value,
-    `Share of N` = proportion_N,
-    stringsAsFactors = FALSE
-  )
-  
-  gate_results_table <- rbind(gate_results_table, new_row)
-}
-
-gate_results_table <- xtable(gate_results_table)
-print(gate_results_table,
-      file = file.path(output_path, "/tables/gates_table_math.tex"),
-      include.rownames = TRUE,
-      floating = FALSE)
-
-
-# GATEs: ELA Scores
-subgroup_conditions <- list(
-  "Urban" = charter_seda_ela[,"urban"] == 1,
-  "Suburban" = charter_seda_ela[,"suburb"] == 1,
-  "Rural" = charter_seda_ela[,"rural"] == 1,
-  "Percent Free Lunch > 20%" = charter_seda_ela[,"perfrl"] > 0.20
-)
-
-# initializes the table to store results
-gate_results_table <- data.frame(
-  Group = character(),
-  GATE = numeric(),
-  SE = numeric(),
-  `p-value` = numeric(),
-  `% N` = numeric(),
-  stringsAsFactors = FALSE
-)
-
-for (group_name in names(subgroup_conditions)) {
-  
-  condition <- subgroup_conditions[[group_name]]
-  
-  filtered_df <- charter_seda_ela[condition, ]
-  
-  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
-  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
-  
-  z_score <- gate_estimate / gate_se
-  p_value <- 2 * (1 - pnorm(abs(z_score)))
-  
-  proportion_N <- mean(condition)
-  
-  new_row <- data.frame(
-    Group = group_name,
-    GATE = gate_estimate,
-    SE = gate_se,
-    `p-value` = p_value,
-    `Share of N` = proportion_N,
-    stringsAsFactors = FALSE
-  )
-  
-  gate_results_table <- rbind(gate_results_table, new_row)
-}
-
-gate_results_table <- xtable(gate_results_table)
-print(gate_results_table,
-      file = file.path(output_path, "/tables/gates_table_ela.tex"),
-      include.rownames = TRUE,
-      floating = FALSE)
+# Create the LaTeX table
+kable(combined_gate_results, 
+      caption = "GATEs within Subgroups",
+      format = "latex", booktabs = TRUE, 
+      align = "lcccccc",
+      linesep = "", escape = FALSE, label = "gates_table_all") %>%
+  add_header_above(c(" " = 1, "GATE Estimates" = 3, "Proportion of N" = 3)) %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/gates_table_all.tex"))
 
 # GATE table within states -----------------------------------------------
 
