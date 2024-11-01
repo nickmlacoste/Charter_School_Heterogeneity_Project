@@ -268,27 +268,40 @@ negative_means_afgr <- negative_effects_afgr %>%
 positive_means_afgr <- positive_effects_afgr %>%
   summarise(across(all_of(X_covariates_afgr), mean, na.rm = TRUE))
 
-difference_afgr <- positive_means_afgr - negative_means_afgr
+difference_afgr <- round(positive_means_afgr - negative_means_afgr, 2)
 
 n_positive_afgr <- nrow(positive_effects_afgr)
 n_negative_afgr <- nrow(negative_effects_afgr)
 
+# Perform t-tests and determine significance levels
+p_values <- sapply(X_covariates_afgr, function(var) {
+  t_test <- t.test(positive_effects_afgr[[var]], negative_effects_afgr[[var]], var.equal = TRUE)
+  t_test$p.value
+})
+
+# Add significance stars based on p-values
+significance_stars <- ifelse(p_values < 0.01, "***",
+                             ifelse(p_values < 0.05, "**",
+                                    ifelse(p_values < 0.1, "*", "")))
+
 summary_table <- bind_cols(
   Covariate = covariate_names_afgr, 
-  `Significantly Positive` = as.numeric(positive_means_afgr),
-  `Significantly Negative` = as.numeric(negative_means_afgr),
-  `Difference (Positive - Negative)` = as.numeric(difference_afgr)
+  `Significantly \n Positive` = round(as.numeric(positive_means_afgr), 2),
+  `Significantly \n Negative` = round(as.numeric(negative_means_afgr), 2),
+  `Difference \n (Positive - Negative)` = paste0(difference_afgr, significance_stars)
 ) %>% 
   add_row(Covariate = "Number of Observations", 
-          `Significantly Positive` = n_positive_afgr, 
-          `Significantly Negative` = n_negative_afgr, 
-          `Difference (Positive - Negative)` = n_positive_afgr + n_negative_afgr)
+          `Significantly \n Positive` = n_positive_afgr, 
+          `Significantly \n Negative` = n_negative_afgr, 
+          `Difference \n (Positive - Negative)` = as.character(n_positive_afgr + n_negative_afgr))
 
-summary_table <- xtable(summary_table)
-print(summary_table,
-      file = file.path(output_path, "/tables/cov_means_table_afgr.tex"),
-      include.rownames = TRUE,
-      floating = FALSE)
+kable(summary_table, 
+      caption = "Comparing Covariate Means: Graduation Rates",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "cov_means_afgr") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
+  save_kable(file = file.path(output_path, "tables/cov_means_table_afgr.tex"))
 
 # Math Scores:
 negative_effects_math <- charter_seda_math %>%
@@ -303,27 +316,40 @@ negative_means_math <- negative_effects_math %>%
 positive_means_math <- positive_effects_math %>%
   summarise(across(all_of(X_covariates_math), mean, na.rm = TRUE))
 
-difference_math <- positive_means_math - negative_means_math
+difference_math <- round(positive_means_math - negative_means_math, 2)
 
 n_positive_math <- nrow(positive_effects_math)
 n_negative_math <- nrow(negative_effects_math)
 
+# Perform t-tests and determine significance levels
+p_values <- sapply(X_covariates_math, function(var) {
+  t_test <- t.test(positive_effects_math[[var]], negative_effects_math[[var]], var.equal = TRUE)
+  t_test$p.value
+})
+
+# Add significance stars based on p-values
+significance_stars <- ifelse(p_values < 0.01, "***",
+                             ifelse(p_values < 0.05, "**",
+                                    ifelse(p_values < 0.1, "*", "")))
+
 summary_table <- bind_cols(
   Covariate = covariate_names_math, 
-  `Significantly Positive` = as.numeric(positive_means_math),
-  `Significantly Negative` = as.numeric(negative_means_math),
-  `Difference (Positive - Negative)` = as.numeric(difference_math)
+  `Significantly \n Positive` = round(as.numeric(positive_means_math), 2),
+  `Significantly \n Negative` = round(as.numeric(negative_means_math), 2),
+  `Difference \n (Positive - Negative)` = paste0(difference_math, significance_stars)
 ) %>% 
   add_row(Covariate = "Number of Observations", 
-          `Significantly Positive` = n_positive_math, 
-          `Significantly Negative` = n_negative_math, 
-          `Difference (Positive - Negative)` = n_positive_math + n_negative_math)
+          `Significantly \n Positive` = n_positive_math, 
+          `Significantly \n Negative` = n_negative_math, 
+          `Difference \n (Positive - Negative)` = as.character(n_positive_math + n_negative_math))
 
-summary_table <- xtable(summary_table)
-print(summary_table,
-      file = file.path(output_path, "/tables/cov_means_table_math.tex"),
-      include.rownames = TRUE,
-      floating = FALSE)
+kable(summary_table, 
+      caption = "Comparing Covariate Means: Math",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "cov_means_math") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
+  save_kable(file = file.path(output_path, "tables/cov_means_table_math.tex"))
 
 
 # ELA Scores:
@@ -339,27 +365,42 @@ negative_means_ela <- negative_effects_ela %>%
 positive_means_ela <- positive_effects_ela %>%
   summarise(across(all_of(X_covariates_ela), mean, na.rm = TRUE))
 
-difference_ela <- positive_means_ela - negative_means_ela
+difference_ela <- round(positive_means_ela - negative_means_ela, 2)
 
 n_positive_ela <- nrow(positive_effects_ela)
 n_negative_ela <- nrow(negative_effects_ela)
 
+# Perform t-tests and determine significance levels
+p_values <- sapply(X_covariates_ela, function(var) {
+  t_test <- t.test(positive_effects_ela[[var]], negative_effects_ela[[var]], var.equal = TRUE)
+  t_test$p.value
+})
+
+# Add significance stars based on p-values
+significance_stars <- ifelse(p_values < 0.01, "***",
+                             ifelse(p_values < 0.05, "**",
+                                    ifelse(p_values < 0.1, "*", "")))
+
 summary_table <- bind_cols(
   Covariate = covariate_names_ela, 
-  `Significantly Positive` = as.numeric(positive_means_ela),
-  `Significantly Negative` = as.numeric(negative_means_ela),
-  `Difference (Positive - Negative)` = as.numeric(difference_ela)
+  `Significantly \n Positive` = round(as.numeric(positive_means_ela), 2),
+  `Significantly \n Negative` = round(as.numeric(negative_means_ela), 2),
+  `Difference \n (Positive - Negative)` = paste0(difference_ela, significance_stars)
 ) %>% 
   add_row(Covariate = "Number of Observations", 
-          `Significantly Positive` = n_positive_ela, 
-          `Significantly Negative` = n_negative_ela, 
-          `Difference (Positive - Negative)` = n_positive_ela + n_negative_ela)
+          `Significantly \n Positive` = n_positive_ela, 
+          `Significantly \n Negative` = n_negative_ela, 
+          `Difference \n (Positive - Negative)` = as.character(n_positive_ela + n_negative_ela))
 
-summary_table <- xtable(summary_table)
-print(summary_table,
-      file = file.path(output_path, "/tables/cov_means_table_ela.tex"),
-      include.rownames = TRUE,
-      floating = FALSE)
+# Create the LaTeX table
+kable(summary_table, 
+      caption = "Comparing Covariate Means: ELA",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "cov_means_ela") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
+  save_kable(file = file.path(output_path, "tables/cov_means_table_ela.tex"))
+
 
 # Group Average Treatment Effect Tables --------------------
 
