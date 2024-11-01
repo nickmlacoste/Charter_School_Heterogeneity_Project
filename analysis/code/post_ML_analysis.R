@@ -32,7 +32,7 @@ charter_seda_ela <- read.csv(file.path(data_path, "ela_post_ML.csv"))
 
 ATEs <- read.csv(file.path(data_path, "cf_ATE_estimates.csv"))
 
-# Distribution of treatment effects plots (distrct x year estimates) -------------------
+# Distribution of treatment effects plots (district x year estimates) -------------------
 
 # Graduation Rates
 plot <- ggplot(charter_afgr2, aes(x = predictions, fill = as.factor(significant))) +
@@ -361,7 +361,229 @@ print(summary_table,
       include.rownames = TRUE,
       floating = FALSE)
 
+# Group Average Treatment Effect Tables --------------------
 
+# GATEs: Graduation Rates
+subgroup_conditions <- list(
+  "Urban" = charter_afgr2[,"urban"] == 1,
+  "Suburban" = charter_afgr2[,"suburb"] == 1,
+  "Rural" = charter_afgr2[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = charter_afgr2[,"perfrl"] > 0.20
+)
+
+# initializes the table to store results
+gate_results_table <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `% N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (group_name in names(subgroup_conditions)) {
+  
+  condition <- subgroup_conditions[[group_name]]
+  
+  filtered_df <- charter_afgr2[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  new_row <- data.frame(
+    Group = group_name,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    `Share of N` = proportion_N,
+    stringsAsFactors = FALSE
+  )
+  
+  gate_results_table <- rbind(gate_results_table, new_row)
+}
+
+gate_results_table <- xtable(gate_results_table)
+print(gate_results_table,
+      file = file.path(output_path, "/tables/gates_table_afgr.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+# GATEs: Math Scores
+subgroup_conditions <- list(
+  "Urban" = charter_seda_math[,"urban"] == 1,
+  "Suburban" = charter_seda_math[,"suburb"] == 1,
+  "Rural" = charter_seda_math[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = charter_seda_math[,"perfrl"] > 0.20
+)
+
+# initializes the table to store results
+gate_results_table <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `% N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (group_name in names(subgroup_conditions)) {
+  
+  condition <- subgroup_conditions[[group_name]]
+  
+  filtered_df <- charter_seda_math[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  new_row <- data.frame(
+    Group = group_name,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    `Share of N` = proportion_N,
+    stringsAsFactors = FALSE
+  )
+  
+  gate_results_table <- rbind(gate_results_table, new_row)
+}
+
+gate_results_table <- xtable(gate_results_table)
+print(gate_results_table,
+      file = file.path(output_path, "/tables/gates_table_math.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+
+# GATEs: ELA Scores
+subgroup_conditions <- list(
+  "Urban" = charter_seda_ela[,"urban"] == 1,
+  "Suburban" = charter_seda_ela[,"suburb"] == 1,
+  "Rural" = charter_seda_ela[,"rural"] == 1,
+  "Percent Free Lunch > 20%" = charter_seda_ela[,"perfrl"] > 0.20
+)
+
+# initializes the table to store results
+gate_results_table <- data.frame(
+  Group = character(),
+  GATE = numeric(),
+  SE = numeric(),
+  `p-value` = numeric(),
+  `% N` = numeric(),
+  stringsAsFactors = FALSE
+)
+
+for (group_name in names(subgroup_conditions)) {
+  
+  condition <- subgroup_conditions[[group_name]]
+  
+  filtered_df <- charter_seda_ela[condition, ]
+  
+  gate_estimate <- mean(filtered_df$dr_score, na.rm = TRUE)
+  gate_se <- sd(filtered_df$dr_score, na.rm = TRUE) / sqrt(nrow(filtered_df))
+  
+  z_score <- gate_estimate / gate_se
+  p_value <- 2 * (1 - pnorm(abs(z_score)))
+  
+  proportion_N <- mean(condition)
+  
+  new_row <- data.frame(
+    Group = group_name,
+    GATE = gate_estimate,
+    SE = gate_se,
+    `p-value` = p_value,
+    `Share of N` = proportion_N,
+    stringsAsFactors = FALSE
+  )
+  
+  gate_results_table <- rbind(gate_results_table, new_row)
+}
+
+gate_results_table <- xtable(gate_results_table)
+print(gate_results_table,
+      file = file.path(output_path, "/tables/gates_table_ela.tex"),
+      include.rownames = TRUE,
+      floating = FALSE)
+
+# GATE table within states -----------------------------------------------
+
+# Function to calculate GATE with stars and share of N for each dataset
+calculate_gate <- function(dataset, state_column, dr_score_column) {
+  unique_states <- unique(dataset[[state_column]])
+  results <- data.frame(
+    State = character(),
+    GATE = character(),
+    `Share of N` = numeric(),
+    stringsAsFactors = FALSE
+  )
+  
+  for (state in unique_states) {
+    condition <- dataset[[state_column]] == state
+    filtered_df <- dataset[condition, ]
+    
+    gate_estimate <- mean(filtered_df[[dr_score_column]], na.rm = TRUE)
+    gate_se <- sd(filtered_df[[dr_score_column]], na.rm = TRUE) / sqrt(nrow(filtered_df))
+    
+    z_score <- gate_estimate / gate_se
+    p_value <- 2 * (1 - pnorm(abs(z_score)))
+    
+    proportion_N <- mean(condition)
+    
+    # Determine significance stars
+    stars <- ifelse(p_value < 0.01, "***",
+                    ifelse(p_value < 0.05, "**",
+                           ifelse(p_value < 0.1, "*", "")))
+    
+    # Create GATE with stars
+    gate_with_stars <- paste0(round(gate_estimate, 3), stars)
+    
+    # Append to results
+    results <- rbind(results, data.frame(
+      State = state,
+      GATE = gate_with_stars,
+      `Share of N` = round(proportion_N, 3),
+      stringsAsFactors = FALSE
+    ))
+  }
+  
+  return(results)
+}
+
+# Calculate GATE for each dataset
+gate_afgr <- calculate_gate(charter_afgr2, "statename", "dr_score") %>%
+  rename(`Grad Rate` = GATE, `Grad Rate Share` = `Share.of.N`)
+gate_math <- calculate_gate(charter_seda_math, "statename", "dr_score") %>%
+  rename(`Math` = GATE, `Math Share` = `Share.of.N`)
+gate_ela <- calculate_gate(charter_seda_ela, "statename", "dr_score") %>%
+  rename(`ELA` = GATE, `ELA Share` = `Share.of.N`)
+
+# Merge results by State
+state_results_table <- gate_afgr %>%
+  left_join(gate_math, by = "State") %>%
+  left_join(gate_ela, by = "State") %>%
+  select(
+    State,
+    `Grad Rate`, `Math`, `ELA`,
+    `Grad Rate Share`, `Math Share`, `ELA Share`
+  )
+
+# Create the LaTeX table
+kable(state_results_table, 
+      caption = "GATEs within States",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "state_gates_combined") %>%
+  add_header_above(c(" " = 1, "GATE Estimates" = 3, "Proportion of N" = 3)) %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/state_gates_table.tex"))
 
 
 
