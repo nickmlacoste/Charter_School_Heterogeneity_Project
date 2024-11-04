@@ -1,14 +1,17 @@
-% latex table generated in R 4.4.0 by xtable 1.8-4 package
-% Fri Sep 20 11:59:52 2024
-\begin{tabular}{lrrrr}
-  \hline
-Variable & Estimate & Std..Error & t.value & Pr...t.. \\ 
-  \hline
-(Intercept) & 0.16 & 0.05 & 3.10 & 0.00 \\ 
-  Teacher salary & 0.00 & 0.00 & 0.78 & 0.43 \\ 
-  Per-pupil revenue & -0.00 & 0.00 & -0.68 & 0.50 \\ 
-  log(enrollment) & 0.01 & 0.12 & 0.06 & 0.95 \\ 
-  Percent Hispanic & -1.41 & 1.69 & -0.83 & 0.40 \\ 
-  Rural & -0.03 & 0.01 & -1.83 & 0.07 \\ 
-   \hline
+\begin{table}[!h]
+\centering
+\caption{\label{tab:blp_afgr}Best Linear Projection: Graduation Rates}
+\centering
+\begin{tabular}[t]{lcccc}
+\toprule
+Term & Estimate & Std. Error & t-stat & p-value\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{0.162***} & \cellcolor{gray!10}{0.052} & \cellcolor{gray!10}{3.097} & \cellcolor{gray!10}{0.002}\\
+tea\_salary & 0 & 0.000 & 0.781 & 0.435\\
+\cellcolor{gray!10}{p\_rev} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0.000} & \cellcolor{gray!10}{-0.682} & \cellcolor{gray!10}{0.495}\\
+logenroll & 0.008 & 0.124 & 0.064 & 0.949\\
+\cellcolor{gray!10}{perhsp} & \cellcolor{gray!10}{-1.412} & \cellcolor{gray!10}{1.694} & \cellcolor{gray!10}{-0.834} & \cellcolor{gray!10}{0.404}\\
+rural & -152826558.787* & 83618153.101 & -1.828 & 0.068\\
+\bottomrule
 \end{tabular}
+\end{table}

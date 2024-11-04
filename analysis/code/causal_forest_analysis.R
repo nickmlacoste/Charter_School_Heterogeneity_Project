@@ -17,6 +17,7 @@ library(xtable)
 library(knitr)
 library(kableExtra)
 library(plm)
+library(broom)
 
 data_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/data"
 output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output"
@@ -156,7 +157,8 @@ covariate_names <- c(
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
   num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness"
+  charter_eff = "Charter Effectiveness",
+  L.afgr = "Baseline Performance"
 )
 
 vif_df <- data.frame(
@@ -186,25 +188,43 @@ ggsave(filename = file.path(output_path, "/figures/vif_scores_afgr.png"), plot =
 # (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
 # effect to see which ones are associated with higher/lower treatment effects
 afgr_blp <- best_linear_projection(cf_model, X_matrix[,afgr_ranked_vars[1:5]])
+afgr_blp_df <- tidy(afgr_blp)
 
-blp_results <- data.frame(
-  Variable = c("(Intercept)", "logenroll", "perhsp", "perfrl", "perwht", "str"),
-  Estimate = afgr_blp[, 1],  
-  `Std. Error` = afgr_blp[, 2],  
-  `t value` = afgr_blp[, 3],  
-  `Pr(>|t|)` = afgr_blp[, 4]  
-)
+# Add significance stars based on p-values
+afgr_blp_df <- afgr_blp_df %>%
+  mutate(
+    stars = ifelse(p.value < 0.01, "***",
+                   ifelse(p.value < 0.05, "**",
+                          ifelse(p.value < 0.1, "*", ""))),
+    Estimate_with_stars = paste0(round(estimate, 3), stars),
+    std.error = round(std.error, 3),
+    statistic = round(statistic, 3),
+    p.value = round(p.value, 3)
+  )
 
-blp_results <- xtable(blp_results, 
-                    caption = "Best Linear Projection of the Conditional Average Treatment Effect",
-                    align = c("l", "l", "r", "r", "r", "r"))
+# change the variable names to make them descriptive
+afgr_blp_df <- afgr_blp_df %>%
+  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names[term]))
 
-print(blp_results,
-      file = file.path(output_path, "/tables/blp_table_afgr.tex"),
-      include.rownames = FALSE,
-      floating = FALSE,
-      hline.after = c(-1, 0, nrow(blp_results))
-      )
+# Select and rename columns for LaTeX table
+afgr_blp_table <- afgr_blp_df %>%
+  select(
+    Term = term,
+    `Estimate` = Estimate_with_stars,
+    `Std. Error` = std.error,
+    `t-stat` = statistic,
+    `p-value` = p.value
+  )
+
+# Create the LaTeX table with kable
+kable(afgr_blp_table, 
+      caption = "Best Linear Projection: Graduation Rates",
+      format = "latex", booktabs = TRUE, 
+      align = "lcccc",
+      linesep = "", escape = FALSE, label = "blp_afgr") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/blp_table_afgr.tex"))
+
 
 ###########                        ################
 ###########  Test Score results    ################
@@ -358,7 +378,8 @@ covariate_names <- c(
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
   num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness"
+  charter_eff = "Charter Effectiveness",
+  L.st_math = "Baseline Performance"
 )
 
 vif_df <- data.frame(
@@ -379,30 +400,48 @@ plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
 ggsave(filename = file.path(output_path, "/figures/vif_scores_math.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
-# best linear projection  --------------------
+# best linear projection (math) --------------------
 
 # (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
 # effect to see which ones are associated with higher/lower treatment effects
 math_blp <- best_linear_projection(cf_model, X_matrix[,math_ranked_vars[1:5]])
+math_blp_df <- tidy(math_blp)
 
-blp_results <- data.frame(
-  Variable = c("(Intercept)", "logenroll", "perhsp", "perfrl", "perwht", "str"),
-  Estimate = math_blp[, 1],  
-  `Std. Error` = math_blp[, 2],  
-  `t value` = math_blp[, 3],  
-  `Pr(>|t|)` = math_blp[, 4]  
-)
+# Add significance stars based on p-values
+math_blp_df <- math_blp_df %>%
+  mutate(
+    stars = ifelse(p.value < 0.01, "***",
+                   ifelse(p.value < 0.05, "**",
+                          ifelse(p.value < 0.1, "*", ""))),
+    Estimate_with_stars = paste0(round(estimate, 3), stars),
+    std.error = round(std.error, 3),
+    statistic = round(statistic, 3),
+    p.value = round(p.value, 3)
+  )
 
-blp_results <- xtable(blp_results, 
-                      caption = "Best Linear Projection of the CATE - Math",
-                      align = c("l", "l", "r", "r", "r", "r"))
+# change the variable names to make them descriptive
+math_blp_df <- math_blp_df %>%
+  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names[term]))
 
-print(blp_results,
-      file = file.path(output_path, "/tables/blp_table_math.tex"),
-      include.rownames = FALSE,
-      floating = FALSE,
-      hline.after = c(-1, 0, nrow(blp_results))
-)
+# Select and rename columns for LaTeX table
+math_blp_table <- math_blp_df %>%
+  select(
+    Term = term,
+    `Estimate` = Estimate_with_stars,
+    `Std. Error` = std.error,
+    `t-stat` = statistic,
+    `p-value` = p.value
+  )
+
+# Create the LaTeX table with kable
+kable(math_blp_table, 
+      caption = "Best Linear Projection: Math Scores",
+      format = "latex", booktabs = TRUE, 
+      align = "lcccc",
+      linesep = "", escape = FALSE, label = "blp_math") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/blp_table_math.tex"))
+
 
 # Estimate the Causal Forest on test score data (ELA) ------------------------
 
@@ -532,7 +571,8 @@ covariate_names <- c(
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
   num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness"
+  charter_eff = "Charter Effectiveness",
+  L.st_ela = "Baseline Performance"
 )
 
 vif_df <- data.frame(
@@ -553,27 +593,44 @@ plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
 ggsave(filename = file.path(output_path, "/figures/vif_scores_ela.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
-# best linear projection  --------------------
+# best linear projection (ela)  --------------------
 
 # (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
 # effect to see which ones are associated with higher/lower treatment effects
 ela_blp <- best_linear_projection(cf_model, X_matrix[,ela_ranked_vars[1:5]])
+ela_blp_df <- tidy(ela_blp)
 
-blp_results <- data.frame(
-  Variable = c("(Intercept)", "logenroll", "perhsp", "perfrl", "perwht", "str"),
-  Estimate = ela_blp[, 1],  
-  `Std. Error` = ela_blp[, 2],  
-  `t value` = ela_blp[, 3],  
-  `Pr(>|t|)` = ela_blp[, 4]  
-)
+# Add significance stars based on p-values
+ela_blp_df <- ela_blp_df %>%
+  mutate(
+    stars = ifelse(p.value < 0.01, "***",
+                   ifelse(p.value < 0.05, "**",
+                          ifelse(p.value < 0.1, "*", ""))),
+    Estimate_with_stars = paste0(round(estimate, 3), stars),
+    std.error = round(std.error, 3),
+    statistic = round(statistic, 3),
+    p.value = round(p.value, 3)
+  )
 
-blp_results <- xtable(blp_results, 
-                      caption = "Best Linear Projection of the CATE - ELA",
-                      align = c("l", "l", "r", "r", "r", "r"))
+# change the variable names to make them descriptive
+ela_blp_df <- ela_blp_df %>%
+  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names[term]))
 
-print(blp_results,
-      file = file.path(output_path, "/tables/blp_table_ela.tex"),
-      include.rownames = FALSE,
-      floating = FALSE,
-      hline.after = c(-1, 0, nrow(blp_results))
-)
+# Select and rename columns for LaTeX table
+ela_blp_table <- ela_blp_df %>%
+  select(
+    Term = term,
+    `Estimate` = Estimate_with_stars,
+    `Std. Error` = std.error,
+    `t-stat` = statistic,
+    `p-value` = p.value
+  )
+
+# Create the LaTeX table with kable
+kable(ela_blp_table, 
+      caption = "Best Linear Projection: ELA Scores",
+      format = "latex", booktabs = TRUE, 
+      align = "lcccc",
+      linesep = "", escape = FALSE, label = "blp_ela") %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  save_kable(file = file.path(output_path, "tables/blp_table_ela.tex"))
