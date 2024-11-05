@@ -4,13 +4,40 @@ It takes about 30 min to run, so it should only be executed once.
 */
 
 
-clear
+clear all
+
 *cd "D:\Research\Charter\Charterdata"
 cd "C:\Users\nickm\OneDrive\Acer (new laptop)\Documents\PhD\Tulane University\Projects\Charter School Heterogeneity\data"
 global control "logenroll perwht perblk perhsp perfrl perspeced urban suburb town rural p_rev p_exp str tea_salary num_magnet charter_eff"
 
 global sum "enrollment perwht perblk perhsp perfrl perspeced urban suburb town rural p_rev p_exp str tea_salary num_magnet"
 set scheme s2color  
+
+********************************************************************************
+***** Cleaning AFGR
+********************************************************************************
+
+use charter_afgr, clear
+sort district year
+bysort district: gen afgr_g=afgr/afgr[_n-1]-1
+bysort district: egen afgr_m=mean(afgr)
+gen extreme=(afgr_g!=. & afgr_g>=0.1 | afgr_g<=-0.1)
+bysort district: replace extreme=1 if extreme==0 & extreme[_n+1]==1
+gen afgr_dif=afgr-afgr_m if extreme==1
+gen afgr_a=abs(afgr_dif)
+bysort district: gen afgr_change=afgr_a>afgr_a[_n-1] if afgr_a!=.
+bysort district: replace afgr_change=1 if afgr_a>afgr_a[_n+1]  & afgr_a!=.
+order district year afgr  afgr_g extreme afgr_m afgr_dif afgr_a afgr_change
+
+gen afgr_new=afgr
+
+bysort district: replace afgr_new=(afgr_new[_n-1]+afgr_new[_n+1])/2 if afgr_change==1
+replace afgr_new=afgr_new[_n+1] if afgr_new==. & afgr_change==1
+order district year afgr_g extreme afgr_m afgr_dif afgr_a afgr_change afgr afgr_new
+replace afgr=afgr_new
+drop afgr_g extreme afgr_m afgr_dif afgr_a afgr_change afgr_new
+save charter_afgr2, replace
+
 
 ********************************************************************************
 ***** Figure 1 Histogram 
@@ -216,7 +243,8 @@ duplicates drop district, force
 sort state district treated
 bysort state: egen obs2=mean(treated)
 drop if obs2==0
-keep state treated district base_charter change5 districtname max_charter
+*keep state treated district base_charter change5 districtname max_charter
+keep state treated district base_charter change5 max_charter
 bysort district: egen tot_charter=sum(base_charter)
 egen order1=group(state)
 gsort -treated order1 district

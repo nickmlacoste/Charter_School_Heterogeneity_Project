@@ -69,9 +69,11 @@ weight_vector <- as.vector(charter_afgr2_panel$eweight)
 # weight_vector <- as.vector(charter_afgr2_clean$eweight)
 
 # Toggle to TRUE if you want to re-train the causal forest, if FALSE it will load the saved model
-train_grad_rate_model <- FALSE
+train_grad_rate_model <- TRUE
 
 if (train_grad_rate_model) {
+  
+  cat("Training Causal Forest -- Graduation Rates. \n")
   
   # Estimate the causal forest model
   cf_model <- causal_forest(X = X_matrix,
@@ -102,6 +104,8 @@ if (train_grad_rate_model) {
                             seed = runif(1, 0, .Machine$integer.max)
   )
   
+  cat("Causal Forest Trained -- Graduation Rates. \n")
+  
   # Save the causal forest model
   saveRDS(cf_model, file = paste0(cf_output_path, "/cf_model_afgr.rda"))
   
@@ -109,6 +113,8 @@ if (train_grad_rate_model) {
   
   # Load the previously saved model
   cf_model <- readRDS(file.path(cf_output_path, "cf_model_afgr.rda"))
+  
+  cat("Causal Forest Imported -- Graduation Rates. \n")
 }
 
 # generate CATE estimates on training data (i.e. the full sample) using leave-one-out estimates ---------
@@ -289,9 +295,11 @@ weight_vector <- as.vector(charter_seda_math_panel$eweight)
 # weight_vector <- as.vector(charter_seda_math$eweight)
 
 # Toggle to TRUE if you want to re-train the causal forest, if FALSE it will load the saved model
-train_math_model <- FALSE
+train_math_model <- TRUE
 
 if (train_math_model) {
+  
+  cat("Training Causal Forest -- Math Scores. \n")
   
   # Estimate the causal forest model
   cf_model <- causal_forest(X = X_matrix,
@@ -299,7 +307,7 @@ if (train_math_model) {
                             W = W_vector,
                             Y.hat = NULL,
                             W.hat = NULL,
-                            num.trees = 1000,
+                            num.trees = 100,
                             sample.weights = weight_vector,
                             clusters = as.factor(charter_seda_math_panel$district),
                             equalize.cluster.weights = FALSE,
@@ -325,10 +333,14 @@ if (train_math_model) {
   # Save the causal forest model
   saveRDS(cf_model, file = paste0(cf_output_path, "/cf_model_math.rda"))
   
+  cat("Causal Forest Trained -- Math Scores. \n")
+  
 } else {
   
   # Load the previously saved model
   cf_model <- readRDS(file.path(cf_output_path, "cf_model_math.rda"))
+  
+  cat("Causal Forest Imported -- Math Scores. \n")
 }
 
 # generate CATE estimates on training data (i.e. the full sample) using leave-one-out estimates ---------
@@ -473,9 +485,11 @@ weight_vector <- as.vector(charter_seda_ela_panel$eweight)
 # weight_vector <- as.vector(charter_seda_ela$eweight)
 
 # Toggle to TRUE if you want to re-train the causal forest, if FALSE it will load the saved model
-train_ela_model <- FALSE
+train_ela_model <- TRUE
 
 if (train_ela_model) {
+  
+  cat("Training Causal Forest -- ELA Scores. \n")
   
   # Estimate the causal forest model
   cf_model <- causal_forest(X = X_matrix,
@@ -483,7 +497,7 @@ if (train_ela_model) {
                             W = W_vector,
                             Y.hat = NULL,
                             W.hat = NULL,
-                            num.trees = 1000,
+                            num.trees = 100,
                             sample.weights = weight_vector,
                             clusters = as.factor(charter_seda_ela_panel$district),
                             equalize.cluster.weights = FALSE,
@@ -509,10 +523,14 @@ if (train_ela_model) {
   # Save the causal forest model
   saveRDS(cf_model, file = paste0(cf_output_path, "/cf_model_ela.rda"))
   
+  cat("Causal Forest Trained -- ELA Scores. \n")
+  
 } else {
   
   # Load the previously saved model
   cf_model <- readRDS(file.path(cf_output_path, "cf_model_ela.rda"))
+  
+  cat("Causal Forest Imported -- ELA Scores. \n")
 }
 
 # generate CATE estimates on training data (i.e. the full sample) using leave-one-out estimates ---------

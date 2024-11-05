@@ -1,14 +1,17 @@
-% latex table generated in R 4.4.0 by xtable 1.8-4 package
-% Fri Sep 20 19:13:15 2024
-\begin{tabular}{lrrrr}
-  \hline
-Variable & Estimate & Std..Error & t.value & Pr...t.. \\ 
-  \hline
-(Intercept) & 0.05 & 0.08 & 0.58 & 0.56 \\ 
-  Student-teacher ratio & -0.01 & 0.05 & -0.32 & 0.75 \\ 
-  Percent black & -5.46 & 3.11 & -1.75 & 0.08 \\ 
-  Teacher salary & 0.00 & 0.00 & 1.73 & 0.08 \\ 
-  log(enrollment) & 0.18 & 0.22 & 0.80 & 0.42 \\ 
-  Urban & 0.12 & 0.07 & 1.32 & 0.19 \\ 
-   \hline
+\begin{table}[H]%[!h]
+\centering
+\caption{\label{tab:blp_ela}Best Linear Projection: ELA Scores}
+\centering
+\begin{tabular}[t]{lcccc}
+\toprule
+Term & Estimate & Std. Error & t-stat & p-value\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{0.012} & \cellcolor{gray!10}{0.044} & \cellcolor{gray!10}{0.267} & \cellcolor{gray!10}{0.790}\\
+Number of Magnet Schools & -0.002 & 0.003 & -0.631 & 0.528\\
+\cellcolor{gray!10}{Urban} & \cellcolor{gray!10}{0.528} & \cellcolor{gray!10}{0.347} & \cellcolor{gray!10}{1.523} & \cellcolor{gray!10}{0.128}\\
+Percent Black & 5.427 & 5.536 & 0.980 & 0.327\\
+\cellcolor{gray!10}{Log of Enrollment} & \cellcolor{gray!10}{1.046***} & \cellcolor{gray!10}{0.394} & \cellcolor{gray!10}{2.659} & \cellcolor{gray!10}{0.008}\\
+Teacher Salary & 0 & 0.000 & -1.219 & 0.223\\
+\bottomrule
 \end{tabular}
+\end{table}

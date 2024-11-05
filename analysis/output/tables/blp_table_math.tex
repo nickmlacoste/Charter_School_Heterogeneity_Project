@@ -1,14 +1,17 @@
-% latex table generated in R 4.4.0 by xtable 1.8-4 package
-% Fri Sep 20 14:54:37 2024
-\begin{tabular}{lrrrr}
-  \hline
-Variable & Estimate & Std..Error & t.value & Pr...t.. \\ 
-  \hline
-(Intercept) & -0.13 & 0.09 & -1.54 & 0.12 \\ 
-  log(enrollment) & -0.23 & 0.27 & -0.86 & 0.39 \\ 
-  Teacher salary & -0.00 & 0.00 & -0.73 & 0.47 \\ 
-  Percent black & -5.66 & 3.75 & -1.51 & 0.13 \\ 
-  Student-teacher ratio & 0.03 & 0.07 & 0.40 & 0.69 \\ 
-  Num magnet schools & 0.02 & 0.01 & 2.84 & 0.00 \\ 
-   \hline
+\begin{table}[H]%[!h]
+\centering
+\caption{\label{tab:blp_math}Best Linear Projection: Math Scores}
+\centering
+\begin{tabular}[t]{lcccc}
+\toprule
+Term & Estimate & Std. Error & t-stat & p-value\\
+\midrule
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{-0.05} & \cellcolor{gray!10}{0.032} & \cellcolor{gray!10}{-1.534} & \cellcolor{gray!10}{0.125}\\
+Percent Black & 2.887 & 5.210 & 0.554 & 0.580\\
+\cellcolor{gray!10}{Number of Magnet Schools} & \cellcolor{gray!10}{0.041} & \cellcolor{gray!10}{0.043} & \cellcolor{gray!10}{0.942} & \cellcolor{gray!10}{0.346}\\
+Percent Free/Reduced Lunch & -0.069 & 1.182 & -0.059 & 0.953\\
+\cellcolor{gray!10}{Log of Enrollment} & \cellcolor{gray!10}{0.756*} & \cellcolor{gray!10}{0.430} & \cellcolor{gray!10}{1.757} & \cellcolor{gray!10}{0.079}\\
+Percent Hispanic & -0.519 & 1.853 & -0.280 & 0.780\\
+\bottomrule
 \end{tabular}
+\end{table}

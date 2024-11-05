@@ -43,10 +43,17 @@ plot <- ggplot(charter_afgr2, aes(x = predictions, fill = as.factor(significant)
        x = "Treatment Effect", 
        y = "Frequency") +
   xlim(-0.5, 1) +  
-  geom_vline(aes(xintercept = ATEs$ATE[1]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = ATEs$ATE[1], y = 20000, label = paste("ATE =", round(ATEs$ATE[1], 2))), 
-            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
-  theme_minimal()
+  geom_vline(aes(xintercept = ATEs$ATE[1]), color = "red", linetype = "solid", size = 1) +  
+  geom_text(aes(x = 0.5, y = 30000, label = paste("ATE =", round(ATEs$ATE[1], 2))), 
+            vjust = -0.5, hjust = 0.5, color = "red", size = 6) +  
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 14),          
+    axis.text = element_text(size = 12),           
+    legend.text = element_text(size = 12),         
+    legend.title = element_text(size = 13),        
+    plot.title = element_text(size = 16, face = "bold")  
+  )
 
 ggsave(filename = file.path(output_path, "/figures/cate_dist_afgr.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
@@ -60,10 +67,17 @@ plot <- ggplot(charter_seda_math, aes(x = predictions, fill = as.factor(signific
        x = "Treatment Effect", 
        y = "Frequency") +
   xlim(-2, 2) +  
-  geom_vline(aes(xintercept = ATEs$ATE[2]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = ATEs$ATE[2], y = 20000, label = paste("ATE =", round(ATEs$ATE[2], 2))), 
-            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
-  theme_minimal()
+  geom_vline(aes(xintercept = ATEs$ATE[2]), color = "red", linetype = "solid", size = 1) +  
+  geom_text(aes(x = 1.5, y = 30000, label = paste("ATE =", round(ATEs$ATE[2], 2))), 
+            vjust = -0.5, hjust = 0.5, color = "red", size = 6) +  
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 14),          
+    axis.text = element_text(size = 12),           
+    legend.text = element_text(size = 12),         
+    legend.title = element_text(size = 13),        
+    plot.title = element_text(size = 16, face = "bold")  
+  )
 
 ggsave(filename = file.path(output_path, "/figures/cate_dist_math.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
@@ -76,11 +90,18 @@ plot <- ggplot(charter_seda_ela, aes(x = predictions, fill = as.factor(significa
   labs(title = "Distribution of Estimated Treatment Effects -- ELA", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-1.5, 1.5) +  
-  geom_vline(aes(xintercept = ATEs$ATE[3]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = ATEs$ATE[3], y = 20000, label = paste("ATE =", round(ATEs$ATE[3], 2))), 
-            vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
-  theme_minimal()
+  xlim(-1.6, 1.6) +  
+  geom_vline(aes(xintercept = ATEs$ATE[3]), color = "red", linetype = "solid", size = 1) +  
+  geom_text(aes(x = 1, y = 30000, label = paste("ATE =", round(ATEs$ATE[3], 2))), 
+            vjust = -0.5, hjust = 0.5, color = "red", size = 6) +  
+  theme_minimal() +
+  theme(
+    axis.title = element_text(size = 14),          
+    axis.text = element_text(size = 12),           
+    legend.text = element_text(size = 12),         
+    legend.title = element_text(size = 13),        
+    plot.title = element_text(size = 16, face = "bold")  
+  )
 
 ggsave(filename = file.path(output_path, "/figures/cate_dist_ela.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
@@ -579,7 +600,7 @@ kable(state_results_table,
   kable_styling(latex_options = c("striped", "hold_position")) %>%
   save_kable(file = file.path(output_path, "tables/state_gates_table.tex"))
 
-# GATE bar graph at different dosage levels (grad rates) -----------------------
+# Dose-response GATE bar graph -----------------------
 
 # Step 1: Define the custom threshold levels for `lag_lag_share`
 thresholds <- c(0.05, 0.1, 0.15, 0.2, 0.25, 0.3)
@@ -746,10 +767,17 @@ group_results_table_ela$Group <- factor(group_results_table_ela$Group, levels = 
 plot <- ggplot(group_results_table_afgr, aes(x = Group, y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
+  labs(
+    x = "Prior Charter Intensity", 
+    y = "GATE", 
+    title = "GATE within Charter-Intensity Levels: Graduation Rates"
+  ) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(size = 14)  # Increase x-axis label size
+    plot.title = element_text(size = 16, face = "bold"),  
+    axis.title = element_text(size = 16),                 
+    axis.text = element_text(size = 14),                  
+    axis.text.y = element_text(size = 14)                 
   )
 
 # Save the plot
@@ -761,11 +789,19 @@ ggsave(filename = file.path(output_path, "figures/gate_dosage_afgr.png"),
 plot <- ggplot(group_results_table_math, aes(x = Group, y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
+  labs(
+    x = "Prior Charter Intensity", 
+    y = "GATE", 
+    title = "GATE within Charter-Intensity Levels: Math Scores"
+  ) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(size = 14)  # Increase x-axis label size
+    plot.title = element_text(size = 16, face = "bold"),  
+    axis.title = element_text(size = 16),                 
+    axis.text = element_text(size = 14),                  
+    axis.text.y = element_text(size = 14)                 
   )
+
 
 # Save the plot
 ggsave(filename = file.path(output_path, "figures/gate_dosage_math.png"), 
@@ -773,13 +809,20 @@ ggsave(filename = file.path(output_path, "figures/gate_dosage_math.png"),
        width = 8, height = 6, dpi = 300)
 
 # ELA scores
-plot <- ggplot(group_results_table_math, aes(x = Group, y = GATE)) +
+plot <- ggplot(group_results_table_ela, aes(x = Group, y = GATE)) +
   geom_bar(stat = "identity", fill = "skyblue") +
   geom_errorbar(aes(ymin = GATE - SE, ymax = GATE + SE), width = 0.2) +
-  labs(x = "Lag Share Group Threshold", y = "GATE", title = "GATE within Different Thresholds of Lag Share") +
+  labs(
+    x = "Prior Charter Intensity", 
+    y = "GATE", 
+    title = "GATE within Charter-Intensity Levels: ELA Scores"
+  ) +
   theme_minimal() +
   theme(
-    axis.text.x = element_text(size = 14)  # Increase x-axis label size
+    plot.title = element_text(size = 16, face = "bold"),  
+    axis.title = element_text(size = 16),                 
+    axis.text = element_text(size = 14),                  
+    axis.text.y = element_text(size = 14)                 
   )
 
 # Save the plot
