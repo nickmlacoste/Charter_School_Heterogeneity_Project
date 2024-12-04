@@ -41,8 +41,10 @@ charter_afgr2 <- charter_afgr2 %>%
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
-                  "L.afgr")
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet",
+                  "napcs14_nocaps", "napcs14_perf", "napcs14_transpar",
+                  "napcs14_non_renew", "napcs14_exem", "napcs14_eq_funding",
+                  "zcoolcitypop", "zcoolcityuniv","w_pp_exp_percdiff", "L.afgr")
 
 # remove rows with missing data for Y or W
 charter_afgr2_clean <- charter_afgr2 %>%
@@ -52,11 +54,32 @@ charter_afgr2_clean <- charter_afgr2 %>%
 charter_afgr2_panel <- pdata.frame(charter_afgr2_clean,
                                    index = c("district","stateyear"))
 
-X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
-  Within(charter_afgr2_panel[[var]], effect = "twoway")
-}))
+# # Transforms the X-matrix: this block will ignore NAs when calculatng group mean 
+
+# within_transform <- function(var, group1, group2) {
+#   # First, de-mean within the primary group (e.g., district)
+#   demeaned_var <- var - ave(var, group1, FUN = function(x) mean(x, na.rm = TRUE))
+#   # Then, de-mean within the secondary group (e.g., year), ignoring NAs
+#   demeaned_var <- demeaned_var - ave(demeaned_var, group2, FUN = function(x) mean(x, na.rm = TRUE))
+#   
+#   return(demeaned_var)
+# }
+# 
+# # Apply the transformation to each variable in X_covariates
+# X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+#   within_transform(charter_afgr2_panel[[var]], 
+#                    charter_afgr2_panel$district, 
+#                    charter_afgr2_panel$year)
+# }))
+
+## This block will not ignore NAs when calculating group means:
+
+# X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+#   Within(charter_afgr2_panel[[var]], effect = "twoway")
+# }))
+
+X_matrix <- as.matrix(charter_afgr2_panel[X_covariates])
 colnames(X_matrix) <- X_covariates
-X_matrix <- as.matrix(X_matrix)
 Y_vector <- as.vector(Within(charter_afgr2_panel$afgr, effect = "twoway"))
 W_vector <- as.vector(Within(charter_afgr2_panel$lag_share, "twoway"))
 weight_vector <- as.vector(charter_afgr2_panel$eweight)
@@ -69,7 +92,7 @@ weight_vector <- as.vector(charter_afgr2_panel$eweight)
 # weight_vector <- as.vector(charter_afgr2_clean$eweight)
 
 # Toggle to TRUE if you want to re-train the causal forest, if FALSE it will load the saved model
-train_grad_rate_model <- TRUE
+train_grad_rate_model <- FALSE
 
 if (train_grad_rate_model) {
   
@@ -149,23 +172,34 @@ afgr_ranked_vars <- order(afgr_vif, decreasing = TRUE)
 
 covariate_names <- c(
   logenroll = "Log of Enrollment",
-  perwht = "Percent White",
-  perblk = "Percent Black",
-  perhsp = "Percent Hispanic",
-  perfrl = "Percent Free/Reduced Lunch",
-  perspeced = "Percent Special Ed",
+  perwht = "White (%)",
+  perblk = "Black (%)",
+  perhsp = "Hispanic (%)",
+  perfrl = "Free/Reduced Lunch (%)",
+  perspeced = "Special Ed (%)",
+  L.afgr = "Baseline Performance",
   urban = "Urban",
   suburb = "Suburb",
   town = "Town",
   rural = "Rural",
+  num_magnet = "Magnet Schools (%)",
+  zcoolcitypop = "City Population (standardized)",
+  zcoolcityuniv = "University in City",
   p_rev = "Per Pupil Revenue",
-  p_exp = "Per Pupil Expenditure",
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
-  num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness",
-  L.afgr = "Baseline Performance"
+  w_pp_exp_percdiff = "TPS-Charter Spending (% diff)",
+  p_exp = "Total Spending (per-pupil)",
+  napcs14_eq_funding = "Equitable Funding",
+  napcs14_nocaps = "No Caps on CS Growth",
+  napcs14_perf = "Performance-Based Contracts",
+  napcs14_transpar = "Transparent Charter Startup Policies",
+  napcs14_non_renew = "Clear Charter Renewal Policies",
+  napcs14_exem = "Exempt from State/District Regs"
 )
+
+covariate_names_latex <- lapply(covariate_names, 
+                                function(x) gsub("%", "\\%", x, fixed = TRUE))
 
 vif_df <- data.frame(
   Variable = X_covariates,
@@ -177,10 +211,17 @@ vif_df$Variable <- covariate_names[vif_df$Variable]
 plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
   geom_bar(stat = "identity", fill = "steelblue") +    
   coord_flip() +                                       
-  labs(title = "Variable Importance (VIF Scores) - Graduation Rates", 
+  labs(#title = "Variable Importance (VIF Scores) - Graduation Rates", 
        x = "Variable", 
        y = "Variable Importance Score") +
-  theme_minimal() 
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 14),   
+    axis.title.y = element_text(size = 14),   
+    axis.text.x = element_text(size = 12),    
+    axis.text.y = element_text(size = 12),    
+    plot.title = element_text(size = 16, face = "bold")  
+  )
 
 ggsave(filename = file.path(output_path, "/figures/vif_scores_afgr.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
@@ -191,9 +232,9 @@ ggsave(filename = file.path(output_path, "/figures/vif_scores_afgr.png"), plot =
 
 # best linear projection  --------------------
 
-# (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
+# (regresses T(X) = B_0 + A B_1, i.e. regress top 10 VIF variables on treatment
 # effect to see which ones are associated with higher/lower treatment effects
-afgr_blp <- best_linear_projection(cf_model, X_matrix[,afgr_ranked_vars[1:5]])
+afgr_blp <- best_linear_projection(cf_model, X_matrix[,afgr_ranked_vars[1:10]])
 afgr_blp_df <- tidy(afgr_blp)
 
 # Add significance stars based on p-values
@@ -210,7 +251,7 @@ afgr_blp_df <- afgr_blp_df %>%
 
 # change the variable names to make them descriptive
 afgr_blp_df <- afgr_blp_df %>%
-  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names[term]))
+  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names_latex[term]))
 
 # Select and rename columns for LaTeX table
 afgr_blp_table <- afgr_blp_df %>%
@@ -246,6 +287,7 @@ library(xtable)
 library(knitr)
 library(kableExtra)
 library(plm)
+library(broom)
 
 data_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/data"
 output_path <- "C:/Users/nickm/OneDrive/Acer (new laptop)/Documents/PhD/Tulane University/Projects/Charter School Heterogeneity/Charter_School_Heterogeneity_Project/analysis/output"
@@ -268,8 +310,10 @@ charter_seda <- charter_seda %>%
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
-                  "L.st_math")
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet",
+                  "napcs14_nocaps", "napcs14_perf", "napcs14_transpar",
+                  "napcs14_non_renew", "napcs14_exem", "napcs14_eq_funding",
+                  "zcoolcitypop", "zcoolcityuniv", "w_pp_exp_percdiff", "L.st_math")
 
 # remove rows with missing data for Y or W
 charter_seda_math <- charter_seda %>%
@@ -279,11 +323,11 @@ charter_seda_math <- charter_seda %>%
 charter_seda_math_panel <- pdata.frame(charter_seda_math,
                                    index = c("district","sgyear"))
 
-X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
-  Within(charter_seda_math_panel[[var]], effect = "twoway")
-}))
+# X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+#   Within(charter_seda_math_panel[[var]], effect = "twoway")
+# }))
+X_matrix <- as.matrix(charter_seda_math_panel[X_covariates])
 colnames(X_matrix) <- X_covariates
-X_matrix <- as.matrix(X_matrix)
 Y_vector <- as.vector(Within(charter_seda_math_panel$st_math, effect = "twoway"))
 W_vector <- as.vector(Within(charter_seda_math_panel$lag_grade, "twoway"))
 weight_vector <- as.vector(charter_seda_math_panel$eweight)
@@ -295,7 +339,7 @@ weight_vector <- as.vector(charter_seda_math_panel$eweight)
 # weight_vector <- as.vector(charter_seda_math$eweight)
 
 # Toggle to TRUE if you want to re-train the causal forest, if FALSE it will load the saved model
-train_math_model <- TRUE
+train_math_model <- FALSE
 
 if (train_math_model) {
   
@@ -370,29 +414,40 @@ math_ate <- average_treatment_effect(cf_model,
                                      target.sample = "all",
                                      method = "AIPW")
 
-# variable importance factors plot ----------------
+# variable importance factors plot (math) ----------------
 math_vif <- variable_importance(cf_model)
 math_ranked_vars <- order(math_vif, decreasing = TRUE)
 
 covariate_names <- c(
   logenroll = "Log of Enrollment",
-  perwht = "Percent White",
-  perblk = "Percent Black",
-  perhsp = "Percent Hispanic",
-  perfrl = "Percent Free/Reduced Lunch",
-  perspeced = "Percent Special Ed",
+  perwht = "White (%)",
+  perblk = "Black (%)",
+  perhsp = "Hispanic (%)",
+  perfrl = "Free/Reduced Lunch (%)",
+  perspeced = "Special Ed (%)",
+  L.st_math = "Baseline Performance",
   urban = "Urban",
   suburb = "Suburb",
   town = "Town",
   rural = "Rural",
+  num_magnet = "Magnet Schools (%)",
+  zcoolcitypop = "City Population (standardized)",
+  zcoolcityuniv = "University in City",
   p_rev = "Per Pupil Revenue",
-  p_exp = "Per Pupil Expenditure",
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
-  num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness",
-  L.st_math = "Baseline Performance"
+  w_pp_exp_percdiff = "TPS-Charter Spending (% diff)",
+  p_exp = "Total Spending (per-pupil)",
+  napcs14_eq_funding = "Equitable Funding",
+  napcs14_nocaps = "No Caps on CS Growth",
+  napcs14_perf = "Performance-Based Contracts",
+  napcs14_transpar = "Transparent Charter Startup Policies",
+  napcs14_non_renew = "Clear Charter Renewal Policies",
+  napcs14_exem = "Exempt from State/District Regs"
 )
+
+covariate_names_latex <- lapply(covariate_names, 
+                                function(x) gsub("%", "\\%", x, fixed = TRUE))
 
 vif_df <- data.frame(
   Variable = X_covariates,
@@ -404,19 +459,26 @@ vif_df$Variable <- covariate_names[vif_df$Variable]
 plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
   geom_bar(stat = "identity", fill = "steelblue") +    
   coord_flip() +                                       
-  labs(title = "Variable Importance (VIF Scores) - Math", 
+  labs(#title = "Variable Importance (VIF Scores) - Math", 
        x = "Variable", 
        y = "Variable Importance Score") +
-  theme_minimal() 
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 14),   
+    axis.title.y = element_text(size = 14),   
+    axis.text.x = element_text(size = 12),    
+    axis.text.y = element_text(size = 12),    
+    plot.title = element_text(size = 16, face = "bold")  
+  )
 
 ggsave(filename = file.path(output_path, "/figures/vif_scores_math.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
 # best linear projection (math) --------------------
 
-# (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
+# (regresses T(X) = B_0 + A B_1, i.e. regress top 10 VIF variables on treatment
 # effect to see which ones are associated with higher/lower treatment effects
-math_blp <- best_linear_projection(cf_model, X_matrix[,math_ranked_vars[1:5]])
+math_blp <- best_linear_projection(cf_model, X_matrix[,math_ranked_vars[1:10]])
 math_blp_df <- tidy(math_blp)
 
 # Add significance stars based on p-values
@@ -433,7 +495,7 @@ math_blp_df <- math_blp_df %>%
 
 # change the variable names to make them descriptive
 math_blp_df <- math_blp_df %>%
-  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names[term]))
+  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names_latex[term]))
 
 # Select and rename columns for LaTeX table
 math_blp_table <- math_blp_df %>%
@@ -459,8 +521,10 @@ kable(math_blp_table,
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
-                  "L.st_ela")
+                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet",
+                  "napcs14_nocaps", "napcs14_perf", "napcs14_transpar",
+                  "napcs14_non_renew", "napcs14_exem", "napcs14_eq_funding",
+                  "zcoolcitypop", "zcoolcityuniv", "w_pp_exp_percdiff", "L.st_ela")
 
 charter_seda_ela <- charter_seda %>%
   filter(!is.na(st_ela) & !is.na(inter))
@@ -469,11 +533,11 @@ charter_seda_ela <- charter_seda %>%
 charter_seda_ela_panel <- pdata.frame(charter_seda_ela,
                                        index = c("district","sgyear"))
 
-X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
-  Within(charter_seda_ela_panel[[var]], effect = "twoway")
-}))
+# X_matrix <- as.data.frame(lapply(X_covariates, function(var) {
+#   Within(charter_seda_ela_panel[[var]], effect = "twoway")
+# }))
+X_matrix <- as.matrix(charter_seda_ela_panel[X_covariates])
 colnames(X_matrix) <- X_covariates
-X_matrix <- as.matrix(X_matrix)
 Y_vector <- as.vector(Within(charter_seda_ela_panel$st_ela, effect = "twoway"))
 W_vector <- as.vector(Within(charter_seda_ela_panel$lag_grade, "twoway"))
 weight_vector <- as.vector(charter_seda_ela_panel$eweight)
@@ -485,7 +549,7 @@ weight_vector <- as.vector(charter_seda_ela_panel$eweight)
 # weight_vector <- as.vector(charter_seda_ela$eweight)
 
 # Toggle to TRUE if you want to re-train the causal forest, if FALSE it will load the saved model
-train_ela_model <- TRUE
+train_ela_model <- FALSE
 
 if (train_ela_model) {
   
@@ -569,29 +633,40 @@ cf_ATE_estimates <- data.frame(
 write.csv(cf_ATE_estimates, 
           file = file.path(data_path, "cf_ATE_estimates.csv"), row.names = FALSE)
 
-# variable importance factors plot ----------------
+# variable importance factors plot (ela) ----------------
 ela_vif <- variable_importance(cf_model)
 ela_ranked_vars <- order(ela_vif, decreasing = TRUE)
 
 covariate_names <- c(
   logenroll = "Log of Enrollment",
-  perwht = "Percent White",
-  perblk = "Percent Black",
-  perhsp = "Percent Hispanic",
-  perfrl = "Percent Free/Reduced Lunch",
-  perspeced = "Percent Special Ed",
+  perwht = "White (%)",
+  perblk = "Black (%)",
+  perhsp = "Hispanic (%)",
+  perfrl = "Free/Reduced Lunch (%)",
+  perspeced = "Special Ed (%)",
+  L.st_ela = "Baseline Performance",
   urban = "Urban",
   suburb = "Suburb",
   town = "Town",
   rural = "Rural",
+  num_magnet = "Magnet Schools (%)",
+  zcoolcitypop = "City Population (standardized)",
+  zcoolcityuniv = "University in City",
   p_rev = "Per Pupil Revenue",
-  p_exp = "Per Pupil Expenditure",
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
-  num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness",
-  L.st_ela = "Baseline Performance"
+  w_pp_exp_percdiff = "TPS-Charter Spending (% diff)",
+  p_exp = "Total Spending (per-pupil)",
+  napcs14_eq_funding = "Equitable Funding",
+  napcs14_nocaps = "No Caps on CS Growth",
+  napcs14_perf = "Performance-Based Contracts",
+  napcs14_transpar = "Transparent Charter Startup Policies",
+  napcs14_non_renew = "Clear Charter Renewal Policies",
+  napcs14_exem = "Exempt from State/District Regs"
 )
+
+covariate_names_latex <- lapply(covariate_names, 
+                                function(x) gsub("%", "\\%", x, fixed = TRUE))
 
 vif_df <- data.frame(
   Variable = X_covariates,
@@ -603,19 +678,26 @@ vif_df$Variable <- covariate_names[vif_df$Variable]
 plot <- ggplot(vif_df, aes(x = reorder(Variable, VIF_Score), y = VIF_Score)) +
   geom_bar(stat = "identity", fill = "steelblue") +    
   coord_flip() +                                       
-  labs(title = "Variable Importance (VIF Scores) - ELA", 
+  labs(#title = "Variable Importance (VIF Scores) - ELA", 
        x = "Variable", 
        y = "Variable Importance Score") +
-  theme_minimal() 
+  theme_minimal() +
+  theme(
+    axis.title.x = element_text(size = 14),   
+    axis.title.y = element_text(size = 14),   
+    axis.text.x = element_text(size = 12),    
+    axis.text.y = element_text(size = 12),    
+    plot.title = element_text(size = 16, face = "bold")  
+  )
 
 ggsave(filename = file.path(output_path, "/figures/vif_scores_ela.png"), plot = plot, 
        width = 8, height = 6, dpi = 300)
 
 # best linear projection (ela)  --------------------
 
-# (regresses T(X) = B_0 + A B_1, i.e. regress top 5 VIF variables on treatment
+# (regresses T(X) = B_0 + A B_1, i.e. regress top 10 VIF variables on treatment
 # effect to see which ones are associated with higher/lower treatment effects
-ela_blp <- best_linear_projection(cf_model, X_matrix[,ela_ranked_vars[1:5]])
+ela_blp <- best_linear_projection(cf_model, X_matrix[,ela_ranked_vars[1:10]])
 ela_blp_df <- tidy(ela_blp)
 
 # Add significance stars based on p-values
@@ -632,7 +714,7 @@ ela_blp_df <- ela_blp_df %>%
 
 # change the variable names to make them descriptive
 ela_blp_df <- ela_blp_df %>%
-  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names[term]))
+  mutate(term = ifelse(term == "(Intercept)", "(Intercept)", covariate_names_latex[term]))
 
 # Select and rename columns for LaTeX table
 ela_blp_table <- ela_blp_df %>%

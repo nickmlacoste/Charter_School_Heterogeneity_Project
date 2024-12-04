@@ -216,6 +216,11 @@ merge m:1 district using credible_afgr, nogen
 gen sample2=cred_dist==1 | maxshare2==0
 gen sample3=pyear>1995    // drop always treated
 
+* Merge with policy3.dta on statename (many-to-one) - creates state policy variables
+merge m:1 statename using policy3.dta, nogen
+
+* Merge in district level finance data
+merge m:1 district using finance.dta, nogen
 
 gen inter=lag_share
 save charter_afgr2_c, replace
@@ -309,7 +314,11 @@ merge m:1 district using credible_seda, nogen
 gen sample2=cred_dist==1 | maxshare2==0
 gen sample3=pyear>2008    // drop always treated
 
+* creates state policy variables
+merge m:1 statename using policy3.dta
 
+* Merge in district level finance data
+merge m:1 district using finance.dta, nogen
 
 gen inter=lag_grade
 save charter_seda_c, replace

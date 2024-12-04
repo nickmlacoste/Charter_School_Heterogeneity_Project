@@ -66,7 +66,7 @@ plot <- ggplot(charter_seda_math, aes(x = predictions, fill = as.factor(signific
   labs(title = "Distribution of Estimated Treatment Effects -- Math", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-2, 2) +  
+  xlim(-2.25, 2.25) +  
   geom_vline(aes(xintercept = ATEs$ATE[2]), color = "red", linetype = "solid", size = 1) +  
   geom_text(aes(x = 1.5, y = 30000, label = paste("ATE =", round(ATEs$ATE[2], 2))), 
             vjust = -0.5, hjust = 0.5, color = "red", size = 6) +  
@@ -90,7 +90,7 @@ plot <- ggplot(charter_seda_ela, aes(x = predictions, fill = as.factor(significa
   labs(title = "Distribution of Estimated Treatment Effects -- ELA", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-1.6, 1.6) +  
+  xlim(-2, 2) +  
   geom_vline(aes(xintercept = ATEs$ATE[3]), color = "red", linetype = "solid", size = 1) +  
   geom_text(aes(x = 1, y = 30000, label = paste("ATE =", round(ATEs$ATE[3], 2))), 
             vjust = -0.5, hjust = 0.5, color = "red", size = 6) +  
@@ -147,7 +147,7 @@ district_cates_ela <- charter_seda_ela %>%
 
 # Graduation Rates:
 plot <- ggplot(district_cates_afgr, aes(x = mean_prediction, fill = as.factor(significant))) +
-  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
   scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
                     name = "P-Value <= 0.1") +  
   labs(title = "Distribution of District-Level Estimated Treatment Effects", 
@@ -165,15 +165,15 @@ ggsave(filename = file.path(output_path, "figures/cate_dist_district_afgr.png"),
 
 # Math Scores:
 plot <- ggplot(district_cates_math, aes(x = mean_prediction, fill = as.factor(significant))) +
-  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
   scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
                     name = "P-Value <= 0.1") +  
   labs(title = "Distribution of District-Level Estimated Treatment Effects", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-0.5, 0.5) +  
+  xlim(-1, 1) +  
   geom_vline(aes(xintercept = ATEs$ATE[2]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = ATEs$ATE[2], y = 300, label = paste("ATE =", round(ATEs$ATE[2], 2))), 
+  geom_text(aes(x = ATEs$ATE[2], y = 250, label = paste("ATE =", round(ATEs$ATE[2], 2))), 
             vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
   theme_minimal()
 
@@ -183,15 +183,15 @@ ggsave(filename = file.path(output_path, "figures/cate_dist_district_math.png"),
 
 # ELA Scores:
 plot <- ggplot(district_cates_ela, aes(x = mean_prediction, fill = as.factor(significant))) +
-  geom_histogram(binwidth = 0.01, color = "black", alpha = 0.7) + 
+  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.7) + 
   scale_fill_manual(values = c("0" = "lightblue", "1" = "darkblue"), 
                     name = "P-Value <= 0.1") +  
   labs(title = "Distribution of District-Level Estimated Treatment Effects", 
        x = "Treatment Effect", 
        y = "Frequency") +
-  xlim(-0.5, 0.5) +  
-  geom_vline(aes(xintercept = ATEs$ATE[3]), color = "red", linetype = "dashed", size = 1) + 
-  geom_text(aes(x = ATEs$ATE[3], y = 300, label = paste("ATE =", round(ATEs$ATE[3], 2))), 
+  xlim(-1, 1) +  
+  geom_vline(aes(xintercept = abs(ATEs$ATE[3])), color = "red", linetype = "dashed", size = 1) + 
+  geom_text(aes(x = ATEs$ATE[3], y = 300, label = paste("ATE =", round(abs(ATEs$ATE[3]), 2))), 
             vjust = -0.5, hjust = 1.2, color = "red", size = 5) +
   theme_minimal()
 
@@ -202,78 +202,109 @@ ggsave(filename = file.path(output_path, "figures/cate_dist_district_ela.png"),
 
 # Covariate averages for significantly positive vs. negative districts: ---------------------
 
-X_covariates_afgr <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
-                       "perspeced", "urban", "suburb", "town", "rural", 
-                       "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
-                       "L.afgr")
+X_covariates_afgr <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl",
+                       "perspeced", "L.afgr", "urban", "suburb", "town", "rural",
+                       "num_magnet", "zcoolcitypop", "zcoolcityuniv", "p_rev",
+                       "str", "tea_salary", "w_pp_exp_percdiff", "p_exp",
+                       "napcs14_eq_funding", "napcs14_nocaps", "napcs14_perf",
+                       "napcs14_transpar", "napcs14_non_renew", "napcs14_exem")
 
-X_covariates_math <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
-                       "perspeced", "urban", "suburb", "town", "rural", 
-                       "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
-                       "L.st_math")
-X_covariates_ela <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
-                       "perspeced", "urban", "suburb", "town", "rural", 
-                       "p_rev", "p_exp", "str", "tea_salary", "num_magnet", "charter_eff",
-                       "L.st_ela")
+X_covariates_math <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl",
+                       "perspeced", "L.st_math", "urban", "suburb", "town", "rural",
+                       "num_magnet", "zcoolcitypop", "zcoolcityuniv", "p_rev",
+                       "str", "tea_salary", "w_pp_exp_percdiff", "p_exp",
+                       "napcs14_eq_funding", "napcs14_nocaps", "napcs14_perf",
+                       "napcs14_transpar", "napcs14_non_renew", "napcs14_exem")
+
+X_covariates_ela <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl",
+                      "perspeced", "L.st_ela", "urban", "suburb", "town", "rural",
+                      "num_magnet", "zcoolcitypop", "zcoolcityuniv", "p_rev",
+                      "str", "tea_salary", "w_pp_exp_percdiff", "p_exp",
+                      "napcs14_eq_funding", "napcs14_nocaps", "napcs14_perf",
+                      "napcs14_transpar", "napcs14_non_renew", "napcs14_exem")
 
 covariate_names_afgr <- c(
   logenroll = "Log of Enrollment",
-  perwht = "Percent White",
-  perblk = "Percent Black",
-  perhsp = "Percent Hispanic",
-  perfrl = "Percent Free/Reduced Lunch",
-  perspeced = "Percent Special Ed",
+  perwht = "White (\\%)",
+  perblk = "Black (\\%)",
+  perhsp = "Hispanic (\\%)",
+  perfrl = "Free/Reduced Lunch (\\%)",
+  perspeced = "Special Ed (\\%)",
+  L.afgr = "Baseline Performance",
   urban = "Urban",
   suburb = "Suburb",
   town = "Town",
   rural = "Rural",
+  num_magnet = "Magnet Schools (\\%)",
+  zcoolcitypop = "City Population (standardized)",
+  zcoolcityuniv = "University in City",
   p_rev = "Per Pupil Revenue",
-  p_exp = "Per Pupil Expenditure",
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
-  num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness",
-  L.afgr = "Baseline Performance"
+  w_pp_exp_percdiff = "TPS-Charter Spending (\\% diff)",
+  p_exp = "Total Spending (per-pupil)",
+  napcs14_eq_funding = "Equitable Funding",
+  napcs14_nocaps = "No Caps on CS Growth",
+  napcs14_perf = "Performance-Based Contracts",
+  napcs14_transpar = "Transparent Charter Startup Policies",
+  napcs14_non_renew = "Clear Charter Renewal Policies",
+  napcs14_exem = "Exempt from State/District Regs"
 )
 
 covariate_names_math <- c(
   logenroll = "Log of Enrollment",
-  perwht = "Percent White",
-  perblk = "Percent Black",
-  perhsp = "Percent Hispanic",
-  perfrl = "Percent Free/Reduced Lunch",
-  perspeced = "Percent Special Ed",
+  perwht = "White (\\%)",
+  perblk = "Black (\\%)",
+  perhsp = "Hispanic (\\%)",
+  perfrl = "Free/Reduced Lunch (\\%)",
+  perspeced = "Special Ed (\\%)",
+  L.st_math = "Baseline Performance",
   urban = "Urban",
   suburb = "Suburb",
   town = "Town",
   rural = "Rural",
+  num_magnet = "Magnet Schools (\\%)",
+  zcoolcitypop = "City Population (standardized)",
+  zcoolcityuniv = "University in City",
   p_rev = "Per Pupil Revenue",
-  p_exp = "Per Pupil Expenditure",
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
-  num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness",
-  L.st_math = "Baseline Performance"
+  w_pp_exp_percdiff = "TPS-Charter Spending (\\% diff)",
+  p_exp = "Total Spending (per-pupil)",
+  napcs14_eq_funding = "Equitable Funding",
+  napcs14_nocaps = "No Caps on CS Growth",
+  napcs14_perf = "Performance-Based Contracts",
+  napcs14_transpar = "Transparent Charter Startup Policies",
+  napcs14_non_renew = "Clear Charter Renewal Policies",
+  napcs14_exem = "Exempt from State/District Regs"
 )
 
 covariate_names_ela <- c(
   logenroll = "Log of Enrollment",
-  perwht = "Percent White",
-  perblk = "Percent Black",
-  perhsp = "Percent Hispanic",
-  perfrl = "Percent Free/Reduced Lunch",
-  perspeced = "Percent Special Ed",
+  perwht = "White (\\%)",
+  perblk = "Black (\\%)",
+  perhsp = "Hispanic (\\%)",
+  perfrl = "Free/Reduced Lunch (\\%)",
+  perspeced = "Special Ed (\\%)",
+  L.st_ela = "Baseline Performance",
   urban = "Urban",
   suburb = "Suburb",
   town = "Town",
   rural = "Rural",
+  num_magnet = "Magnet Schools (\\%)",
+  zcoolcitypop = "City Population (standardized)",
+  zcoolcityuniv = "University in City",
   p_rev = "Per Pupil Revenue",
-  p_exp = "Per Pupil Expenditure",
   str = "Student-Teacher Ratio",
   tea_salary = "Teacher Salary",
-  num_magnet = "Number of Magnet Schools",
-  charter_eff = "Charter Effectiveness",
-  L.st_ela = "Baseline Performance"
+  w_pp_exp_percdiff = "TPS-Charter Spending (\\% diff)",
+  p_exp = "Total Spending (per-pupil)",
+  napcs14_eq_funding = "Equitable Funding",
+  napcs14_nocaps = "No Caps on CS Growth",
+  napcs14_perf = "Performance-Based Contracts",
+  napcs14_transpar = "Transparent Charter Startup Policies",
+  napcs14_non_renew = "Clear Charter Renewal Policies",
+  napcs14_exem = "Exempt from State/District Regs"
 )
 
 # Graduation rates:
@@ -437,6 +468,170 @@ kable(summary_table,
   row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
   save_kable(file = file.path(output_path, "tables/cov_means_table_ela.tex"))
 
+# Covariate averages for ALL positive vs. negative districts: ---------------------
+
+# Graduation rates:
+negative_effects_afgr <- charter_afgr2 %>%
+  filter(predictions < 0)
+
+positive_effects_afgr <- charter_afgr2 %>%
+  filter(predictions > 0)
+
+negative_means_afgr <- negative_effects_afgr %>%
+  summarise(across(all_of(X_covariates_afgr), mean, na.rm = TRUE))
+
+positive_means_afgr <- positive_effects_afgr %>%
+  summarise(across(all_of(X_covariates_afgr), mean, na.rm = TRUE))
+
+difference_afgr <- round(positive_means_afgr - negative_means_afgr, 2)
+
+n_positive_afgr <- nrow(positive_effects_afgr)
+n_negative_afgr <- nrow(negative_effects_afgr)
+
+# Perform t-tests and determine significance levels
+p_values <- sapply(X_covariates_afgr, function(var) {
+  t_test <- t.test(positive_effects_afgr[[var]], negative_effects_afgr[[var]], var.equal = TRUE)
+  t_test$p.value
+})
+
+# Add significance stars based on p-values
+significance_stars <- ifelse(p_values < 0.01, "***",
+                             ifelse(p_values < 0.05, "**",
+                                    ifelse(p_values < 0.1, "*", "")))
+
+summary_table <- bind_cols(
+  Covariate = covariate_names_afgr, 
+  `All Positive` = round(as.numeric(positive_means_afgr), 2),
+  `All Negative` = round(as.numeric(negative_means_afgr), 2),
+  `Difference (Positive - Negative)` = paste0(difference_afgr, significance_stars)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `All Positive` = n_positive_afgr, 
+          `All Negative` = n_negative_afgr, 
+          `Difference (Positive - Negative)` = as.character(n_positive_afgr + n_negative_afgr))
+
+kable(summary_table, 
+      caption = "Comparing Covariate Means: Graduation Rates",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "cov_means_afgr_all",
+      align = "lccc",
+      col.names = linebreak(c("Covariate",
+                              "All \nPositive", 
+                              "All \nNegative",
+                              "Difference\n(Positive - Negative)"), align = "c")) %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
+  save_kable(file = file.path(output_path, "tables/cov_means_table_all_afgr.tex"))
+
+# Math Scores:
+negative_effects_math <- charter_seda_math %>%
+  filter(predictions < 0)
+
+positive_effects_math <- charter_seda_math %>%
+  filter(predictions > 0)
+
+negative_means_math <- negative_effects_math %>%
+  summarise(across(all_of(X_covariates_math), mean, na.rm = TRUE))
+
+positive_means_math <- positive_effects_math %>%
+  summarise(across(all_of(X_covariates_math), mean, na.rm = TRUE))
+
+difference_math <- round(positive_means_math - negative_means_math, 2)
+
+n_positive_math <- nrow(positive_effects_math)
+n_negative_math <- nrow(negative_effects_math)
+
+# Perform t-tests and determine significance levels
+p_values <- sapply(X_covariates_math, function(var) {
+  t_test <- t.test(positive_effects_math[[var]], negative_effects_math[[var]], var.equal = TRUE)
+  t_test$p.value
+})
+
+# Add significance stars based on p-values
+significance_stars <- ifelse(p_values < 0.01, "***",
+                             ifelse(p_values < 0.05, "**",
+                                    ifelse(p_values < 0.1, "*", "")))
+
+summary_table <- bind_cols(
+  Covariate = covariate_names_math, 
+  `All \n Positive` = round(as.numeric(positive_means_math), 2),
+  `All \n Negative` = round(as.numeric(negative_means_math), 2),
+  `Difference \n (Positive - Negative)` = paste0(difference_math, significance_stars)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `All \n Positive` = n_positive_math, 
+          `All \n Negative` = n_negative_math, 
+          `Difference \n (Positive - Negative)` = as.character(n_positive_math + n_negative_math))
+
+kable(summary_table, 
+      caption = "Comparing Covariate Means: Math",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "cov_means_math_all",
+      align = "lccc",
+      col.names = linebreak(c("Covariate",
+                              "Significantly\nPositive", 
+                              "Significantly\nNegative",
+                              "Difference\n(Positive - Negative)"), align = "c")) %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
+  save_kable(file = file.path(output_path, "tables/cov_means_table_all_math.tex"))
+
+
+# ELA Scores:
+negative_effects_ela <- charter_seda_ela %>%
+  filter(predictions < 0)
+
+positive_effects_ela <- charter_seda_ela %>%
+  filter(predictions > 0)
+
+negative_means_ela <- negative_effects_ela %>%
+  summarise(across(all_of(X_covariates_ela), mean, na.rm = TRUE))
+
+positive_means_ela <- positive_effects_ela %>%
+  summarise(across(all_of(X_covariates_ela), mean, na.rm = TRUE))
+
+difference_ela <- round(positive_means_ela - negative_means_ela, 2)
+
+n_positive_ela <- nrow(positive_effects_ela)
+n_negative_ela <- nrow(negative_effects_ela)
+
+# Perform t-tests and determine significance levels
+p_values <- sapply(X_covariates_ela, function(var) {
+  t_test <- t.test(positive_effects_ela[[var]], negative_effects_ela[[var]], var.equal = TRUE)
+  t_test$p.value
+})
+
+# Add significance stars based on p-values
+significance_stars <- ifelse(p_values < 0.01, "***",
+                             ifelse(p_values < 0.05, "**",
+                                    ifelse(p_values < 0.1, "*", "")))
+
+summary_table <- bind_cols(
+  Covariate = covariate_names_ela, 
+  `All \n Positive` = round(as.numeric(positive_means_ela), 2),
+  `All \n Negative` = round(as.numeric(negative_means_ela), 2),
+  `Difference \n (Positive - Negative)` = paste0(difference_ela, significance_stars)
+) %>% 
+  add_row(Covariate = "Number of Observations", 
+          `All \n Positive` = n_positive_ela, 
+          `All \n Negative` = n_negative_ela, 
+          `Difference \n (Positive - Negative)` = as.character(n_positive_ela + n_negative_ela))
+
+# Create the LaTeX table
+kable(summary_table, 
+      caption = "Comparing Covariate Means: ELA",
+      format = "latex", booktabs = TRUE, 
+      linesep = "", escape = FALSE, label = "cov_means_ela_all",
+      align = "lccc",
+      col.names = linebreak(c("Covariate",
+                              "Significantly\nPositive", 
+                              "Significantly\nNegative",
+                              "Difference\n(Positive - Negative)"), align = "c")) %>%
+  kable_styling(latex_options = c("striped", "hold_position")) %>%
+  row_spec(nrow(summary_table) - 1, hline_after = TRUE) %>%
+  save_kable(file = file.path(output_path, "tables/cov_means_table_all_ela.tex"))
+
+
 
 # Group Average Treatment Effect Tables --------------------
 
@@ -467,7 +662,7 @@ calculate_gate_subgroups <- function(dataset, subgroup_conditions, dr_score_colu
     # GATE with stars
     gate_with_stars <- paste0(round(gate_estimate, 3), stars)
     
-    proportion_N <- mean(condition)
+    proportion_N <- mean(condition, na.rm = TRUE)
     
     # Append to results
     results <- rbind(results, data.frame(
@@ -483,19 +678,45 @@ calculate_gate_subgroups <- function(dataset, subgroup_conditions, dr_score_colu
 }
 
 # Define subgroup conditions
-subgroup_conditions <- list(
+subgroup_conditions_afgr <- list(
   "Urban" = charter_afgr2[,"urban"] == 1,
   "Suburban" = charter_afgr2[,"suburb"] == 1,
   "Rural" = charter_afgr2[,"rural"] == 1,
-  "Percent Free Lunch $>$ 20\\%" = charter_afgr2[,"perfrl"] > 0.20
+  "Percent Free Lunch $>$ 30\\%" = charter_afgr2[,"perfrl"] > 0.30,
+  "No Caps on CS Growth" = charter_afgr2[, "napcs14_nocaps"] == 12,
+  "Trans. CS Startup Policies" = charter_afgr2[, "napcs14_transpar"] == 12,
+  "Performance-Based Contracts" = charter_afgr2[, "napcs14_perf"] == 12,
+  "Equitable Funding" = charter_afgr2[, "napcs14_eq_funding"] == 4
+)
+
+subgroup_conditions_math <- list(
+  "Urban" = charter_seda_math[,"urban"] == 1,
+  "Suburban" = charter_seda_math[,"suburb"] == 1,
+  "Rural" = charter_seda_math[,"rural"] == 1,
+  "Percent Free Lunch $>$ 30\\%" = charter_seda_math[,"perfrl"] > 0.30,
+  "No Caps on CS Growth" = charter_seda_math[, "napcs14_nocaps"] == 12,
+  "Trans. CS Startup Policies" = charter_seda_math[, "napcs14_transpar"] == 12,
+  "Performance-Based Contracts" = charter_seda_math[, "napcs14_perf"] == 12,
+  "Equitable Funding" = charter_seda_math[, "napcs14_eq_funding"] == 4
+)
+
+subgroup_conditions_ela <- list(
+  "Urban" = charter_seda_ela[,"urban"] == 1,
+  "Suburban" = charter_seda_ela[,"suburb"] == 1,
+  "Rural" = charter_seda_ela[,"rural"] == 1,
+  "Percent Free Lunch $>$ 30\\%" = charter_seda_ela[,"perfrl"] > 0.30,
+  "No Caps on CS Growth" = charter_seda_ela[, "napcs14_nocaps"] == 12,
+  "Trans. CS Startup Policies" = charter_seda_ela[, "napcs14_transpar"] == 12,
+  "Performance-Based Contracts" = charter_seda_ela[, "napcs14_perf"] == 12,
+  "Equitable Funding" = charter_seda_ela[, "napcs14_eq_funding"] == 4
 )
 
 # Calculate GATEs for each dataset
-gate_afgr <- calculate_gate_subgroups(charter_afgr2, subgroup_conditions, "dr_score") %>%
+gate_afgr <- calculate_gate_subgroups(charter_afgr2, subgroup_conditions_afgr, "dr_score") %>%
   rename(`Grad Rate` = GATE, `Grad Rate SE` = SE, `Grad Rate Share` = `Share.of.N`)
-gate_math <- calculate_gate_subgroups(charter_seda_math, subgroup_conditions, "dr_score") %>%
+gate_math <- calculate_gate_subgroups(charter_seda_math, subgroup_conditions_math, "dr_score") %>%
   rename(`Math` = GATE, `Math SE` = SE, `Math Share` = `Share.of.N`)
-gate_ela <- calculate_gate_subgroups(charter_seda_ela, subgroup_conditions, "dr_score") %>%
+gate_ela <- calculate_gate_subgroups(charter_seda_ela, subgroup_conditions_ela, "dr_score") %>%
   rename(`ELA` = GATE, `ELA SE` = SE, `ELA Share` = `Share.of.N`)
 
 # Merge results by Group
@@ -621,7 +842,7 @@ charter_afgr2_dosage <- charter_afgr2 %>%
     lag_share_group = cut(
       lag_lag_share,
       breaks = c(-Inf, thresholds, Inf),
-      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+      labels = c("0 - 5%", "5 - 10%", "10 - 15%", "15 - 20%", "20 - 25%", "25 - 30%", ">30%")
     )
   )
 
@@ -639,7 +860,7 @@ charter_seda_math_dosage <- charter_seda_math %>%
     lag_grade_group = cut(
       lag_lag_grade,
       breaks = c(-Inf, thresholds, Inf),
-      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+      labels = c("0 - 5%", "5 - 10%", "10 - 15%", "15 - 20%", "20 - 25%", "25 - 30%", ">30%")
     )
   )
 
@@ -657,7 +878,7 @@ charter_seda_ela_dosage <- charter_seda_ela %>%
     lag_grade_group = cut(
       lag_lag_grade,
       breaks = c(-Inf, thresholds, Inf),
-      labels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%")
+      labels = c("0 - 5%", "5 - 10%", "10 - 15%", "15 - 20%", "20 - 25%", "25 - 30%", ">30%")
     )
   )
 
@@ -756,9 +977,15 @@ for (group in unique(charter_seda_ela_dosage$lag_grade_group)) {
 }
 
 # ensure the groups are in ascending order
-group_results_table_afgr$Group <- factor(group_results_table_afgr$Group, levels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%"))
-group_results_table_math$Group <- factor(group_results_table_math$Group, levels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%"))
-group_results_table_ela$Group <- factor(group_results_table_ela$Group, levels = c("≤5%", "≤10%", "≤15%", "≤20%", "≤25%", "≤30%", ">30%"))
+group_results_table_afgr$Group <- factor(group_results_table_afgr$Group, 
+                                         levels = c("0 - 5%", "5 - 10%", "10 - 15%",
+                                                    "15 - 20%", "20 - 25%", "25 - 30%", ">30%"))
+group_results_table_math$Group <- factor(group_results_table_math$Group, 
+                                         levels = c("0 - 5%", "5 - 10%", "10 - 15%", 
+                                                    "15 - 20%", "20 - 25%", "25 - 30%", ">30%"))
+group_results_table_ela$Group <- factor(group_results_table_ela$Group, 
+                                        levels = c("0 - 5%", "5 - 10%", "10 - 15%", 
+                                                   "15 - 20%", "20 - 25%", "25 - 30%", ">30%"))
 
 
 # Step 4: Plot the bar graphs
@@ -770,7 +997,7 @@ plot <- ggplot(group_results_table_afgr, aes(x = Group, y = GATE)) +
   labs(
     x = "Prior Charter Intensity", 
     y = "GATE", 
-    title = "GATE within Charter-Intensity Levels: Graduation Rates"
+    #title = "GATE within Charter-Intensity Levels: Graduation Rates"
   ) +
   theme_minimal() +
   theme(
@@ -792,7 +1019,7 @@ plot <- ggplot(group_results_table_math, aes(x = Group, y = GATE)) +
   labs(
     x = "Prior Charter Intensity", 
     y = "GATE", 
-    title = "GATE within Charter-Intensity Levels: Math Scores"
+    #title = "GATE within Charter-Intensity Levels: Math Scores"
   ) +
   theme_minimal() +
   theme(
@@ -815,7 +1042,7 @@ plot <- ggplot(group_results_table_ela, aes(x = Group, y = GATE)) +
   labs(
     x = "Prior Charter Intensity", 
     y = "GATE", 
-    title = "GATE within Charter-Intensity Levels: ELA Scores"
+    #title = "GATE within Charter-Intensity Levels: ELA Scores"
   ) +
   theme_minimal() +
   theme(

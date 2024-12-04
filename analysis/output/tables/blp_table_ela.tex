@@ -1,4 +1,4 @@
-\begin{table}[H]%[!h]
+\begin{table}[!h]
 \centering
 \caption{\label{tab:blp_ela}Best Linear Projection: ELA Scores}
 \centering
@@ -6,12 +6,17 @@
 \toprule
 Term & Estimate & Std. Error & t-stat & p-value\\
 \midrule
-\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{0.012} & \cellcolor{gray!10}{0.044} & \cellcolor{gray!10}{0.267} & \cellcolor{gray!10}{0.790}\\
-Number of Magnet Schools & -0.002 & 0.003 & -0.631 & 0.528\\
-\cellcolor{gray!10}{Urban} & \cellcolor{gray!10}{0.528} & \cellcolor{gray!10}{0.347} & \cellcolor{gray!10}{1.523} & \cellcolor{gray!10}{0.128}\\
-Percent Black & 5.427 & 5.536 & 0.980 & 0.327\\
-\cellcolor{gray!10}{Log of Enrollment} & \cellcolor{gray!10}{1.046***} & \cellcolor{gray!10}{0.394} & \cellcolor{gray!10}{2.659} & \cellcolor{gray!10}{0.008}\\
-Teacher Salary & 0 & 0.000 & -1.219 & 0.223\\
+\cellcolor{gray!10}{(Intercept)} & \cellcolor{gray!10}{0.969**} & \cellcolor{gray!10}{0.395} & \cellcolor{gray!10}{2.450} & \cellcolor{gray!10}{0.014}\\
+Magnet Schools (\%) & 0.004 & 0.007 & 0.630 & 0.528\\
+\cellcolor{gray!10}{White (\%)} & \cellcolor{gray!10}{-0.58**} & \cellcolor{gray!10}{0.229} & \cellcolor{gray!10}{-2.532} & \cellcolor{gray!10}{0.011}\\
+Log of Enrollment & -0.008 & 0.032 & -0.247 & 0.805\\
+\cellcolor{gray!10}{Baseline Performance} & \cellcolor{gray!10}{-0.017} & \cellcolor{gray!10}{0.047} & \cellcolor{gray!10}{-0.359} & \cellcolor{gray!10}{0.720}\\
+Black (\%) & -0.576** & 0.246 & -2.342 & 0.019\\
+\cellcolor{gray!10}{Per Pupil Revenue} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0.000} & \cellcolor{gray!10}{-1.112} & \cellcolor{gray!10}{0.266}\\
+Special Ed (\%) & -2.143 & 1.328 & -1.614 & 0.107\\
+\cellcolor{gray!10}{Total Spending (per-pupil)} & \cellcolor{gray!10}{0} & \cellcolor{gray!10}{0.000} & \cellcolor{gray!10}{0.627} & \cellcolor{gray!10}{0.530}\\
+Hispanic (\%) & -0.745*** & 0.237 & -3.148 & 0.002\\
+\cellcolor{gray!10}{TPS-Charter Spending (\% diff)} & \cellcolor{gray!10}{0.301***} & \cellcolor{gray!10}{0.109} & \cellcolor{gray!10}{2.772} & \cellcolor{gray!10}{0.006}\\
 \bottomrule
 \end{tabular}
 \end{table}
