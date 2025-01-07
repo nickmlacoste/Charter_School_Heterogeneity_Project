@@ -41,7 +41,7 @@ charter_afgr2 <- charter_afgr2 %>%
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet",
+                  "p_rev", "p_exp", "charter_exp", "str", "tea_salary", "num_magnet",
                   "napcs14_nocaps", "napcs14_perf", "napcs14_transpar",
                   "napcs14_non_renew", "napcs14_exem", "napcs14_eq_funding",
                   "zcoolcitypop", "zcoolcityuniv","w_pp_exp_percdiff", "L.afgr")
@@ -190,6 +190,7 @@ covariate_names <- c(
   tea_salary = "Teacher Salary",
   w_pp_exp_percdiff = "TPS-Charter Spending (% diff)",
   p_exp = "Total Spending (per-pupil)",
+  charter_exp = "Charter Spending (per-pupil)",
   napcs14_eq_funding = "Equitable Funding",
   napcs14_nocaps = "No Caps on CS Growth",
   napcs14_perf = "Performance-Based Contracts",
@@ -310,7 +311,7 @@ charter_seda <- charter_seda %>%
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet",
+                  "p_rev", "p_exp", "charter_exp", "str", "tea_salary", "num_magnet",
                   "napcs14_nocaps", "napcs14_perf", "napcs14_transpar",
                   "napcs14_non_renew", "napcs14_exem", "napcs14_eq_funding",
                   "zcoolcitypop", "zcoolcityuniv", "w_pp_exp_percdiff", "L.st_math")
@@ -438,6 +439,7 @@ covariate_names <- c(
   tea_salary = "Teacher Salary",
   w_pp_exp_percdiff = "TPS-Charter Spending (% diff)",
   p_exp = "Total Spending (per-pupil)",
+  charter_exp = "Charter Spending (per-pupil)",
   napcs14_eq_funding = "Equitable Funding",
   napcs14_nocaps = "No Caps on CS Growth",
   napcs14_perf = "Performance-Based Contracts",
@@ -521,7 +523,7 @@ kable(math_blp_table,
 
 X_covariates <- c("logenroll", "perwht", "perblk", "perhsp", "perfrl", 
                   "perspeced", "urban", "suburb", "town", "rural", 
-                  "p_rev", "p_exp", "str", "tea_salary", "num_magnet",
+                  "p_rev", "p_exp", "charter_exp", "str", "tea_salary", "num_magnet",
                   "napcs14_nocaps", "napcs14_perf", "napcs14_transpar",
                   "napcs14_non_renew", "napcs14_exem", "napcs14_eq_funding",
                   "zcoolcitypop", "zcoolcityuniv", "w_pp_exp_percdiff", "L.st_ela")
@@ -657,6 +659,7 @@ covariate_names <- c(
   tea_salary = "Teacher Salary",
   w_pp_exp_percdiff = "TPS-Charter Spending (% diff)",
   p_exp = "Total Spending (per-pupil)",
+  charter_exp = "Charter Spending (per-pupil)",
   napcs14_eq_funding = "Equitable Funding",
   napcs14_nocaps = "No Caps on CS Growth",
   napcs14_perf = "Performance-Based Contracts",
